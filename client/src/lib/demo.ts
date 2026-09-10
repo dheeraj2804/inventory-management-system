@@ -62,6 +62,7 @@ export type Movement = {
 };
 export type DemoStore = {
   version: 1;
+  expansionVersion?: 1;
   categories: Category[];
   suppliers: Supplier[];
   products: Product[];

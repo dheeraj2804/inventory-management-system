@@ -329,7 +329,11 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           duration: 3500,
         }}
       />
-      {pathname === "/login" ? children : <Workspace>{children}</Workspace>}
+      {pathname === "/login" || pathname === "/demo" ? (
+        children
+      ) : (
+        <Workspace>{children}</Workspace>
+      )}
     </AuthGuard>
   );
 }

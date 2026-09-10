@@ -118,7 +118,7 @@ export default function LoginPage() {
             <Icon name="arrow" size={17} />
           </button>
           <small className="demo-caption">
-            24 products. Realistic transactions. No account needed.
+            48 products. 90 days of activity. No account needed.
             <br />
             Your demo edits stay in this browser.
           </small>

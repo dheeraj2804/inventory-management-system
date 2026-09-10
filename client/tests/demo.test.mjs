@@ -1,6 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { createDemoStore, demoRequest } from "../src/lib/demo.ts";
+import { expandDemoStore } from "../src/lib/demo-expansion.ts";
 const make = () => createDemoStore(new Date("2026-09-10T12:00:00Z"));
 const request = (s, path, items, extra = {}) =>
   demoRequest(s, "post", path, { items, createdBy: 1, ...extra });
@@ -108,4 +109,32 @@ test("demo stock edits generate adjustments and a fresh demo is deterministic", 
   assert.equal(s.movements.at(-1).quantity, 5);
   assert.equal(s.movements.at(-1).referenceType, "ADJUSTMENT");
   assert.deepEqual(make(), make());
+});
+
+test("expanded demo adds 90 days of balanced sample activity without changing existing edits", () => {
+  const store = make();
+  store.products[0].name = "My custom product name";
+  const original = JSON.stringify(store.products.slice(0, 24));
+  expandDemoStore(store, new Date("2026-09-10T18:00:00Z"));
+  assert.equal(store.products.length, 48);
+  assert.equal(store.purchases.length, 148);
+  assert.equal(store.sales.length, 214);
+  assert.equal(store.movements.length, 632);
+  assert.equal(JSON.stringify(store.products.slice(0, 24)), original);
+  for (const product of store.products) {
+    assert.ok(product.currentStock >= 0);
+    assert.equal(
+      product.currentStock,
+      store.movements
+        .filter((m) => m.productId === product.id)
+        .reduce(
+          (sum, m) =>
+            sum + (m.movementType === "IN" ? m.quantity : -m.quantity),
+          0,
+        ),
+    );
+  }
+  const snapshot = JSON.stringify(store);
+  expandDemoStore(store);
+  assert.equal(JSON.stringify(store), snapshot);
 });

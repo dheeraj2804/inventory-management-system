@@ -230,3 +230,42 @@ test("mobile drawer and reduced-motion preference keep the workspace usable", as
     fullPage: true,
   });
 });
+
+test("direct demo entry opens the populated dashboard without credentials or live API calls", async ({
+  page,
+}) => {
+  const calls: string[] = [];
+  await page.route("**/api/**", (route) => {
+    calls.push(route.request().url());
+    return route.abort();
+  });
+  await page.goto("/demo");
+  await expect(
+    page.getByRole("heading", { name: "Overview.", exact: true }),
+  ).toBeVisible();
+  const counts = await page.evaluate(() => {
+    const store = JSON.parse(localStorage.getItem("gades-demo-v1")!);
+    return {
+      products: store.products.length,
+      purchases: store.purchases.length,
+      sales: store.sales.length,
+      movements: store.movements.length,
+    };
+  });
+  expect(counts).toEqual({
+    products: 48,
+    purchases: 148,
+    sales: 214,
+    movements: 632,
+  });
+  await page.goto("/demo");
+  await expect(
+    page.getByRole("heading", { name: "Overview.", exact: true }),
+  ).toBeVisible();
+  expect(
+    await page.evaluate(
+      () => JSON.parse(localStorage.getItem("gades-demo-v1")!).products.length,
+    ),
+  ).toBe(48);
+  expect(calls).toEqual([]);
+});

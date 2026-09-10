@@ -36,7 +36,7 @@ npm ci
 npm run dev
 ```
 
-Open [localhost:3000/login](http://localhost:3000/login). The sample workspace includes 24 industrial-supply products, six categories, four suppliers, 34 purchases, 34 sales, and matching stock movements. Four products need attention, including one out of stock. Transaction dates are generated relative to the first demo visit.
+Open [localhost:3000/login](http://localhost:3000/login). The sample workspace includes 48 products across ten categories, eight suppliers, 148 purchases, 214 sales, and 632 matching stock movements. Four products need attention, including one out of stock. The expanded history spans 90 days, with multi-item transactions. Dates are generated relative to the first demo visit. Open `/demo` to enter the populated workspace directly. Existing demo edits are preserved when the larger sample pack is added, and reopening it does not duplicate records.
 
 Demo mode supports product/category/supplier management, purchases, sales, history, search, and CSV exports. Edits persist locally in this browser. A visible banner identifies sample data; **Reset demo** restores it after confirmation. Log out and sign in to use the live API. Demo operations are intercepted locally and never sent to PostgreSQL. Treat the demo as a single-browser playground, not a shared database.
 

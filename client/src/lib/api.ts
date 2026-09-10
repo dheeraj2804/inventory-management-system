@@ -1,4 +1,5 @@
 import axios, { AxiosError, AxiosHeaders, type AxiosAdapter } from "axios";
+import { expandDemoStore } from "./demo-expansion";
 import { createRequestCache } from "./request-cache";
 import { TOKEN_KEY, USER_KEY } from "./auth";
 import {
@@ -15,8 +16,9 @@ export const isDemoMode = () =>
   localStorage.getItem(TOKEN_KEY) === DEMO_TOKEN;
 export const clearApiCache = network.clear;
 export function startDemo() {
-  if (!localStorage.getItem(DEMO_KEY))
-    localStorage.setItem(DEMO_KEY, JSON.stringify(createDemoStore()));
+  const saved = localStorage.getItem(DEMO_KEY);
+  const store: DemoStore = saved ? JSON.parse(saved) : createDemoStore();
+  localStorage.setItem(DEMO_KEY, JSON.stringify(expandDemoStore(store)));
   localStorage.setItem(TOKEN_KEY, DEMO_TOKEN);
   localStorage.setItem(
     USER_KEY,
@@ -31,7 +33,10 @@ export function startDemo() {
   window.dispatchEvent(new Event("auth-changed"));
 }
 export function resetDemo() {
-  localStorage.setItem(DEMO_KEY, JSON.stringify(createDemoStore()));
+  localStorage.setItem(
+    DEMO_KEY,
+    JSON.stringify(expandDemoStore(createDemoStore())),
+  );
   clearApiCache();
 }
 

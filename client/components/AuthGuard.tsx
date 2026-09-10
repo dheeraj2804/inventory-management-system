@@ -15,7 +15,7 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
   const pathname = usePathname(),
     router = useRouter();
   const token = useSyncExternalStore(subscribe, getToken, () => undefined);
-  const allowed = pathname === "/login" || !!token;
+  const allowed = pathname === "/login" || pathname === "/demo" || !!token;
   useEffect(() => {
     if (token !== undefined && !allowed) router.replace("/login");
   }, [allowed, token, router]);
