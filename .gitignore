@@ -1,0 +1,12 @@
+node_modules
+# Keep environment variables out of version control
+.env
+
+/generated/prisma
+
+# Local secrets and generated output
+.env*
+!.env.example
+.DS_Store
+**/src/generated/prisma/
+*.log

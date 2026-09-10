@@ -1,0 +1,121 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id        Int      @id @default(autoincrement())
+  name      String
+  email     String   @unique
+  password  String
+  role      String
+  createdAt DateTime @default(now())
+}
+
+model Category {
+  id          Int       @id @default(autoincrement())
+  name        String
+  description String?
+  products    Product[]
+  createdAt   DateTime  @default(now())
+}
+
+model Supplier {
+  id        Int       @id @default(autoincrement())
+  name      String
+  email     String?
+  phone     String?
+  address   String?
+  products  Product[]
+  purchases Purchase[]
+  createdAt DateTime  @default(now())
+}
+
+model Product {
+  id            Int        @id @default(autoincrement())
+  name          String
+  sku           String     @unique
+  barcode       String?
+  description   String?
+  categoryId    Int
+  supplierId    Int?
+  costPrice     Float
+  sellingPrice  Float
+  currentStock  Int        @default(0)
+  minStockLevel Int        @default(0)
+  unit          String
+  createdAt     DateTime   @default(now())
+
+  category Category @relation(fields: [categoryId], references: [id])
+  supplier Supplier? @relation(fields: [supplierId], references: [id])
+
+  purchaseItems PurchaseItem[]
+  saleItems     SaleItem[]
+  stockMovements StockMovement[]
+}
+
+model Purchase {
+  id           Int           @id @default(autoincrement())
+  supplierId   Int
+  totalAmount  Float
+  purchaseDate DateTime      @default(now())
+  createdBy    Int
+
+  supplier Supplier @relation(fields: [supplierId], references: [id])
+
+  items PurchaseItem[]
+}
+
+model PurchaseItem {
+  id         Int     @id @default(autoincrement())
+  purchaseId Int
+  productId  Int
+  quantity   Int
+  unitCost   Float
+  subtotal   Float
+
+  purchase Purchase @relation(fields: [purchaseId], references: [id])
+  product  Product  @relation(fields: [productId], references: [id])
+}
+
+model Sale {
+  id           Int       @id @default(autoincrement())
+  customerName String?
+  totalAmount  Float
+  saleDate     DateTime  @default(now())
+  createdBy    Int
+
+  items SaleItem[]
+}
+
+model SaleItem {
+  id             Int     @id @default(autoincrement())
+  saleId         Int
+  productId      Int
+  quantity       Int
+  unitPrice      Float
+  unitCostAtSale Float
+  subtotal       Float
+  profit         Float
+
+  sale    Sale    @relation(fields: [saleId], references: [id])
+  product Product @relation(fields: [productId], references: [id])
+}
+
+model StockMovement {
+  id            Int      @id @default(autoincrement())
+  productId     Int
+  movementType  String
+  quantity      Int
+  referenceType String?
+  referenceId   Int?
+  note          String?
+  createdBy     Int?
+  createdAt     DateTime @default(now())
+
+  product Product @relation(fields: [productId], references: [id])
+}
