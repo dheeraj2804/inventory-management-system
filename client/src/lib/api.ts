@@ -23,7 +23,7 @@ export function startDemo() {
     JSON.stringify({
       id: 1,
       name: "Alex Morgan",
-      email: "demo@gades.example",
+      email: "demo@inventory.example",
       role: "Demo workspace",
     }),
   );

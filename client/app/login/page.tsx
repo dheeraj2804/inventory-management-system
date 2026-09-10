@@ -40,7 +40,7 @@ export default function LoginPage() {
             <Icon name="box" size={28} />
           </span>
           <span>
-            GADES<span className="brand-caption">SALES CO.</span>
+            Inventory<span className="brand-caption">PERSONAL PROJECT</span>
           </span>
         </div>
         <div className="login-story-content">

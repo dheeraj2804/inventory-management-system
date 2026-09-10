@@ -170,8 +170,8 @@ p {
   align-items: center;
   gap: 11px;
   font-weight: 800;
-  font-size: 23px;
-  letter-spacing: 3px;
+  font-size: 20px;
+  letter-spacing: -0.5px;
   color: #264b39;
   line-height: 1.1;
   padding: 30px 13px;
@@ -188,7 +188,7 @@ p {
 }
 .brand-caption {
   display: block;
-  letter-spacing: 3.8px;
+  letter-spacing: 1.4px;
   font-size: 9px;
   margin-top: 5px;
   font-weight: 500;

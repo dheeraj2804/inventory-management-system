@@ -1,10 +1,10 @@
 # Inventory Management System
 
-A full-stack inventory management application developed by **Dheeraj Reddy Arjula** for **Gades Sales Co.**, and maintained as a personal software project. It brings product records, suppliers, purchasing, sales, stock movements, and business summaries into one web interface.
+A full-stack inventory management application developed and maintained by **Dheeraj Reddy Arjula** as a personal software project. It brings product records, suppliers, purchasing, sales, stock movements, and business summaries into one web interface.
 
 The project uses a Next.js frontend and an Express API backed by PostgreSQL and Prisma. This README describes the implementation currently in the repository, including the work still needed before a production rollout.
 
-![Gades inventory dashboard showing sample sales, stock health, and recent activity](docs/overview.png)
+![Personal inventory dashboard showing sample sales, stock health, and recent activity](docs/overview.png)
 
 *Dashboard preview with fictional demo data.*
 
@@ -38,7 +38,7 @@ npm run dev
 
 Open [localhost:3000/login](http://localhost:3000/login). The sample workspace includes 24 industrial-supply products, six categories, four suppliers, 34 purchases, 34 sales, and matching stock movements. Four products need attention, including one out of stock. Transaction dates are generated relative to the first demo visit.
 
-Demo mode supports product/category/supplier management, purchases, sales, history, search, and CSV exports. Edits persist in this browser under `gades-demo-v1`. A visible banner identifies sample data; **Reset demo** restores it after confirmation. Log out and sign in to use the live API. Demo operations are intercepted locally and never sent to PostgreSQL. Treat the demo as a single-browser playground, not a shared database.
+Demo mode supports product/category/supplier management, purchases, sales, history, search, and CSV exports. Edits persist locally in this browser. A visible banner identifies sample data; **Reset demo** restores it after confirmation. Log out and sign in to use the live API. Demo operations are intercepted locally and never sent to PostgreSQL. Treat the demo as a single-browser playground, not a shared database.
 
 ### Workspace experience
 
@@ -507,7 +507,7 @@ A pull request should explain the problem, resulting behavior, verification perf
 
 ## Author and licensing
 
-Developed by **Dheeraj Reddy Arjula** for **Gades Sales Co.**, and maintained as a personal project.
+Developed and maintained by **Dheeraj Reddy Arjula** as a personal project.
 
 GitHub: [dheeraj2804](https://github.com/dheeraj2804)
 

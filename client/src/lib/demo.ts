@@ -152,7 +152,7 @@ export function createDemoStore(now = new Date()): DemoStore {
       currentStock: 0,
       minStockLevel: 15,
       unit: "pcs",
-      description: "Sample inventory for exploring the Gades workspace.",
+      description: "Sample inventory for exploring your personal project.",
       createdAt: date(60),
     }),
   );

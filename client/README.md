@@ -1,4 +1,4 @@
-# Gades Sales Co. frontend
+# Inventory Management System frontend
 
 See the [project README](../README.md) for architecture, live API setup, data models, and limitations.
 

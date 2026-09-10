@@ -4,7 +4,8 @@ import AppShell from "@/components/AppShell";
 
 export const metadata = {
   title: "Inventory Management System",
-  description: "Gades Sales Co. inventory, purchasing, and sales workspace.",
+  description:
+    "A personal inventory management project by Dheeraj Reddy Arjula.",
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {

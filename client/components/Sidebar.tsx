@@ -17,11 +17,11 @@ export default function Sidebar({ onNavigate }: { onNavigate: () => void }) {
           <Icon name="box" size={25} />
         </span>
         <span>
-          GADES<span className="brand-caption">SALES CO.</span>
+          Inventory<span className="brand-caption">PERSONAL PROJECT</span>
         </span>
       </Link>
       <div className="workspace-switch">
-        <span className="workspace-dot">G</span>
+        <span className="workspace-dot">I</span>
         <div>
           <strong>Main workspace</strong>
           <small>
