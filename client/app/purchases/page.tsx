@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import api from "@/src/lib/api";
+import PageSkeleton from "@/components/PageSkeleton";
+import { errorMessage as getErrorMessage } from "@/src/lib/errors";
 
 type Supplier = {
   id: number;
@@ -70,7 +72,7 @@ export default function PurchasesPage() {
   const handleItemChange = (
     index: number,
     field: keyof PurchaseItemForm,
-    value: string
+    value: string,
   ) => {
     setErrorMessage("");
     setSuccessMessage("");
@@ -83,7 +85,7 @@ export default function PurchasesPage() {
 
         if (field === "productId") {
           const selectedProduct = products.find(
-            (product) => String(product.id) === value
+            (product) => String(product.id) === value,
           );
 
           if (selectedProduct) {
@@ -92,7 +94,7 @@ export default function PurchasesPage() {
         }
 
         return updated;
-      })
+      }),
     );
   };
 
@@ -114,7 +116,7 @@ export default function PurchasesPage() {
       const subtotal = quantity * unitCost;
 
       const selectedProduct = products.find(
-        (product) => String(product.id) === item.productId
+        (product) => String(product.id) === item.productId,
       );
 
       return {
@@ -188,28 +190,22 @@ export default function PurchasesPage() {
       setSuccessMessage(res.data?.message || "Purchase created successfully.");
       setSupplierId("");
       setItems([emptyItem()]);
-    } catch (error: any) {
+      const productsRes = await api.get("/products");
+      setProducts(productsRes.data);
+    } catch (error: unknown) {
       console.error("Error creating purchase:", error);
-      setErrorMessage(
-        error?.response?.data?.message ||
-          error?.response?.data?.error ||
-          "Failed to create purchase."
-      );
+      setErrorMessage(getErrorMessage(error, "Failed to create purchase."));
     } finally {
       setSubmitting(false);
     }
   };
 
   if (loading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-black text-white">
-        Loading purchases page...
-      </div>
-    );
+    return <PageSkeleton />;
   }
 
   return (
-    <div className="min-h-screen bg-black p-8 text-white">
+    <div className="legacy-page min-h-screen p-8">
       <div className="mx-auto max-w-7xl">
         <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
           <div>
@@ -239,14 +235,23 @@ export default function PurchasesPage() {
           </div>
         ) : null}
 
-        <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-6 xl:grid-cols-3">
+        <form
+          onSubmit={handleSubmit}
+          className="grid grid-cols-1 gap-6 xl:grid-cols-3"
+        >
           <div className="xl:col-span-2 rounded-3xl bg-white p-6 text-black shadow-lg">
             <h2 className="mb-5 text-2xl font-bold">Purchase Details</h2>
 
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <div>
-                <label className="mb-2 block font-medium">Supplier</label>
+                <label
+                  className="mb-2 block font-medium"
+                  htmlFor="purchases-field-1"
+                >
+                  Supplier
+                </label>
                 <select
+                  id="purchases-field-1"
                   value={supplierId}
                   onChange={(e) => setSupplierId(e.target.value)}
                   className="w-full rounded-xl border border-slate-300 p-3 outline-none transition focus:border-black"
@@ -262,8 +267,14 @@ export default function PurchasesPage() {
               </div>
 
               <div>
-                <label className="mb-2 block font-medium">Created By (User ID)</label>
+                <label
+                  className="mb-2 block font-medium"
+                  htmlFor="purchases-field-2"
+                >
+                  Created By (User ID)
+                </label>
                 <input
+                  id="purchases-field-2"
                   type="number"
                   value={createdBy}
                   onChange={(e) => setCreatedBy(e.target.value)}
@@ -294,7 +305,9 @@ export default function PurchasesPage() {
                     className="rounded-2xl border border-slate-200 p-4"
                   >
                     <div className="mb-4 flex items-center justify-between">
-                      <h4 className="text-lg font-semibold">Item #{index + 1}</h4>
+                      <h4 className="text-lg font-semibold">
+                        Item #{index + 1}
+                      </h4>
 
                       <button
                         type="button"
@@ -308,8 +321,14 @@ export default function PurchasesPage() {
 
                     <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
                       <div className="xl:col-span-2">
-                        <label className="mb-2 block font-medium">Product</label>
+                        <label
+                          className="mb-2 block font-medium"
+                          htmlFor={`purchases-field-3-${index}`}
+                        >
+                          Product
+                        </label>
                         <select
+                          id={`purchases-field-3-${index}`}
                           value={items[index].productId}
                           onChange={(e) =>
                             handleItemChange(index, "productId", e.target.value)
@@ -327,8 +346,14 @@ export default function PurchasesPage() {
                       </div>
 
                       <div>
-                        <label className="mb-2 block font-medium">Quantity</label>
+                        <label
+                          className="mb-2 block font-medium"
+                          htmlFor={`purchases-field-4-${index}`}
+                        >
+                          Quantity
+                        </label>
                         <input
+                          id={`purchases-field-4-${index}`}
                           type="number"
                           min="1"
                           step="1"
@@ -342,8 +367,14 @@ export default function PurchasesPage() {
                       </div>
 
                       <div>
-                        <label className="mb-2 block font-medium">Unit Cost</label>
+                        <label
+                          className="mb-2 block font-medium"
+                          htmlFor={`purchases-field-5-${index}`}
+                        >
+                          Unit Cost
+                        </label>
                         <input
+                          id={`purchases-field-5-${index}`}
                           type="number"
                           min="0"
                           step="0.01"
@@ -359,7 +390,10 @@ export default function PurchasesPage() {
 
                     <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-4">
                       <InfoCard label="SKU" value={item.productSku || "-"} />
-                      <InfoCard label="Current Stock" value={String(item.currentStock)} />
+                      <InfoCard
+                        label="Current Stock"
+                        value={String(item.currentStock)}
+                      />
                       <InfoCard label="Unit" value={item.unit} />
                       <InfoCard
                         label="Subtotal"
@@ -380,8 +414,9 @@ export default function PurchasesPage() {
                 <InfoCard
                   label="Selected Supplier"
                   value={
-                    suppliers.find((supplier) => String(supplier.id) === supplierId)?.name ||
-                    "-"
+                    suppliers.find(
+                      (supplier) => String(supplier.id) === supplierId,
+                    )?.name || "-"
                   }
                 />
                 <InfoCard label="Total Items" value={String(items.length)} />
@@ -437,13 +472,7 @@ export default function PurchasesPage() {
   );
 }
 
-function InfoCard({
-  label,
-  value,
-}: {
-  label: string;
-  value: string;
-}) {
+function InfoCard({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-2xl border border-slate-200 p-4">
       <p className="text-sm text-slate-500">{label}</p>

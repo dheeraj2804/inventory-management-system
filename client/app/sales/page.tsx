@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import api from "@/src/lib/api";
+import PageSkeleton from "@/components/PageSkeleton";
+import { errorMessage as getErrorMessage } from "@/src/lib/errors";
 
 type Product = {
   id: number;
@@ -59,7 +61,7 @@ export default function SalesPage() {
   const handleItemChange = (
     index: number,
     field: keyof SaleItemForm,
-    value: string
+    value: string,
   ) => {
     setErrorMessage("");
     setSuccessMessage("");
@@ -72,7 +74,7 @@ export default function SalesPage() {
 
         if (field === "productId") {
           const selectedProduct = products.find(
-            (product) => String(product.id) === value
+            (product) => String(product.id) === value,
           );
 
           if (selectedProduct) {
@@ -81,7 +83,7 @@ export default function SalesPage() {
         }
 
         return updated;
-      })
+      }),
     );
   };
 
@@ -103,7 +105,7 @@ export default function SalesPage() {
       const subtotal = quantity * unitPrice;
 
       const selectedProduct = products.find(
-        (product) => String(product.id) === item.productId
+        (product) => String(product.id) === item.productId,
       );
 
       const currentStock = selectedProduct?.currentStock ?? 0;
@@ -147,7 +149,7 @@ export default function SalesPage() {
     for (let i = 0; i < items.length; i++) {
       const item = items[i];
       const selectedProduct = products.find(
-        (product) => String(product.id) === item.productId
+        (product) => String(product.id) === item.productId,
       );
 
       if (!item.productId) {
@@ -207,34 +209,27 @@ export default function SalesPage() {
 
       const productsRes = await api.get("/products");
       setProducts(Array.isArray(productsRes.data) ? productsRes.data : []);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error creating sale:", error);
-      setErrorMessage(
-        error?.response?.data?.error ||
-          error?.response?.data?.message ||
-          "Failed to create sale."
-      );
+      setErrorMessage(getErrorMessage(error, "Failed to create sale."));
     } finally {
       setSubmitting(false);
     }
   };
 
   if (loading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-black text-white">
-        Loading sales page...
-      </div>
-    );
+    return <PageSkeleton />;
   }
 
   return (
-    <div className="min-h-screen bg-black p-8 text-white">
+    <div className="legacy-page min-h-screen p-8">
       <div className="mx-auto max-w-7xl">
         <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
           <div>
             <h1 className="text-4xl font-bold">Create Sale</h1>
             <p className="mt-2 text-zinc-400">
-              Sell products, reduce stock automatically, and track estimated profit.
+              Sell products, reduce stock automatically, and track estimated
+              profit.
             </p>
           </div>
 
@@ -258,14 +253,23 @@ export default function SalesPage() {
           </div>
         ) : null}
 
-        <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-6 xl:grid-cols-3">
+        <form
+          onSubmit={handleSubmit}
+          className="grid grid-cols-1 gap-6 xl:grid-cols-3"
+        >
           <div className="xl:col-span-2 rounded-3xl bg-white p-6 text-black shadow-lg">
             <h2 className="mb-5 text-2xl font-bold">Sale Details</h2>
 
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <div>
-                <label className="mb-2 block font-medium">Customer Name</label>
+                <label
+                  className="mb-2 block font-medium"
+                  htmlFor="sales-field-1"
+                >
+                  Customer Name
+                </label>
                 <input
+                  id="sales-field-1"
                   type="text"
                   value={customerName}
                   onChange={(e) => setCustomerName(e.target.value)}
@@ -275,8 +279,14 @@ export default function SalesPage() {
               </div>
 
               <div>
-                <label className="mb-2 block font-medium">Created By (User ID)</label>
+                <label
+                  className="mb-2 block font-medium"
+                  htmlFor="sales-field-2"
+                >
+                  Created By (User ID)
+                </label>
                 <input
+                  id="sales-field-2"
                   type="number"
                   value={createdBy}
                   onChange={(e) => setCreatedBy(e.target.value)}
@@ -310,7 +320,9 @@ export default function SalesPage() {
                       className="rounded-2xl border border-slate-200 p-4"
                     >
                       <div className="mb-4 flex items-center justify-between">
-                        <h4 className="text-lg font-semibold">Item #{index + 1}</h4>
+                        <h4 className="text-lg font-semibold">
+                          Item #{index + 1}
+                        </h4>
 
                         <button
                           type="button"
@@ -324,11 +336,21 @@ export default function SalesPage() {
 
                       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
                         <div className="xl:col-span-2">
-                          <label className="mb-2 block font-medium">Product</label>
+                          <label
+                            className="mb-2 block font-medium"
+                            htmlFor={`sales-field-3-${index}`}
+                          >
+                            Product
+                          </label>
                           <select
+                            id={`sales-field-3-${index}`}
                             value={items[index].productId}
                             onChange={(e) =>
-                              handleItemChange(index, "productId", e.target.value)
+                              handleItemChange(
+                                index,
+                                "productId",
+                                e.target.value,
+                              )
                             }
                             className="w-full rounded-xl border border-slate-300 p-3 outline-none transition focus:border-black"
                             required
@@ -343,14 +365,24 @@ export default function SalesPage() {
                         </div>
 
                         <div>
-                          <label className="mb-2 block font-medium">Quantity</label>
+                          <label
+                            className="mb-2 block font-medium"
+                            htmlFor={`sales-field-4-${index}`}
+                          >
+                            Quantity
+                          </label>
                           <input
+                            id={`sales-field-4-${index}`}
                             type="number"
                             min="1"
                             step="1"
                             value={items[index].quantity}
                             onChange={(e) =>
-                              handleItemChange(index, "quantity", e.target.value)
+                              handleItemChange(
+                                index,
+                                "quantity",
+                                e.target.value,
+                              )
                             }
                             className="w-full rounded-xl border border-slate-300 p-3 outline-none transition focus:border-black"
                             required
@@ -358,14 +390,24 @@ export default function SalesPage() {
                         </div>
 
                         <div>
-                          <label className="mb-2 block font-medium">Unit Price</label>
+                          <label
+                            className="mb-2 block font-medium"
+                            htmlFor={`sales-field-5-${index}`}
+                          >
+                            Unit Price
+                          </label>
                           <input
+                            id={`sales-field-5-${index}`}
                             type="number"
                             min="0"
                             step="0.01"
                             value={items[index].unitPrice}
                             onChange={(e) =>
-                              handleItemChange(index, "unitPrice", e.target.value)
+                              handleItemChange(
+                                index,
+                                "unitPrice",
+                                e.target.value,
+                              )
                             }
                             className="w-full rounded-xl border border-slate-300 p-3 outline-none transition focus:border-black"
                             required
@@ -375,7 +417,10 @@ export default function SalesPage() {
 
                       <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-3 xl:grid-cols-6">
                         <InfoCard label="SKU" value={item.productSku || "-"} />
-                        <InfoCard label="Current Stock" value={String(item.currentStock)} />
+                        <InfoCard
+                          label="Current Stock"
+                          value={String(item.currentStock)}
+                        />
                         <InfoCard
                           label="Remaining Stock"
                           value={String(item.remainingStock)}
@@ -421,7 +466,10 @@ export default function SalesPage() {
                   value={customerName.trim() || "Walk-in Customer"}
                 />
                 <InfoCard label="Total Items" value={String(items.length)} />
-                <InfoCard label="Grand Total" value={`$${totalAmount.toFixed(2)}`} />
+                <InfoCard
+                  label="Grand Total"
+                  value={`$${totalAmount.toFixed(2)}`}
+                />
                 <InfoCard
                   label="Estimated Profit"
                   value={`$${totalEstimatedProfit.toFixed(2)}`}
@@ -492,7 +540,9 @@ function InfoCard({
   return (
     <div className="rounded-2xl border border-slate-200 p-4">
       <p className="text-sm text-slate-500">{label}</p>
-      <p className={`mt-1 text-lg font-bold ${valueClassName || ""}`}>{value}</p>
+      <p className={`mt-1 text-lg font-bold ${valueClassName || ""}`}>
+        {value}
+      </p>
     </div>
   );
 }

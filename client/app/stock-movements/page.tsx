@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import api from "@/src/lib/api";
+import PageSkeleton from "@/components/PageSkeleton";
 
 type StockMovement = {
   id: number;
@@ -137,7 +138,7 @@ export default function StockMovementsPage() {
     const csvContent = [
       headers.join(","),
       ...rows.map((row) =>
-        row.map((value) => `"${String(value).replace(/"/g, '""')}"`).join(",")
+        row.map((value) => `"${String(value).replace(/"/g, '""')}"`).join(","),
       ),
     ].join("\n");
 
@@ -162,15 +163,11 @@ export default function StockMovementsPage() {
   };
 
   if (loading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-black text-white">
-        Loading stock movements...
-      </div>
-    );
+    return <PageSkeleton />;
   }
 
   return (
-    <div className="min-h-screen bg-black p-8 text-white">
+    <div className="legacy-page min-h-screen p-8">
       <div className="mx-auto max-w-7xl">
         <div className="mb-6">
           <h1 className="text-4xl font-bold">Stock Movements</h1>
@@ -180,11 +177,26 @@ export default function StockMovementsPage() {
         </div>
 
         <div className="mb-6 grid grid-cols-1 gap-4 lg:grid-cols-5">
-          <SummaryCard label="Total Records" value={String(summary.totalRecords)} />
-          <SummaryCard label="IN Records" value={String(summary.stockInCount)} />
-          <SummaryCard label="OUT Records" value={String(summary.stockOutCount)} />
-          <SummaryCard label="Total Qty In" value={String(summary.totalInQty)} />
-          <SummaryCard label="Total Qty Out" value={String(summary.totalOutQty)} />
+          <SummaryCard
+            label="Total Records"
+            value={String(summary.totalRecords)}
+          />
+          <SummaryCard
+            label="IN Records"
+            value={String(summary.stockInCount)}
+          />
+          <SummaryCard
+            label="OUT Records"
+            value={String(summary.stockOutCount)}
+          />
+          <SummaryCard
+            label="Total Qty In"
+            value={String(summary.totalInQty)}
+          />
+          <SummaryCard
+            label="Total Qty Out"
+            value={String(summary.totalOutQty)}
+          />
         </div>
 
         <div className="mb-6 rounded-3xl bg-white p-6 text-black shadow-lg">
@@ -192,8 +204,14 @@ export default function StockMovementsPage() {
 
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
             <div>
-              <label className="mb-2 block font-medium">Search</label>
+              <label
+                className="mb-2 block font-medium"
+                htmlFor="stock-movements-field-1"
+              >
+                Search
+              </label>
               <input
+                id="stock-movements-field-1"
                 type="text"
                 placeholder="Search by product, SKU, note, ref..."
                 value={searchTerm}
@@ -203,8 +221,14 @@ export default function StockMovementsPage() {
             </div>
 
             <div>
-              <label className="mb-2 block font-medium">Movement Type</label>
+              <label
+                className="mb-2 block font-medium"
+                htmlFor="stock-movements-field-2"
+              >
+                Movement Type
+              </label>
               <select
+                id="stock-movements-field-2"
                 value={movementFilter}
                 onChange={(e) => setMovementFilter(e.target.value)}
                 className="w-full rounded-xl border border-slate-300 p-3 outline-none transition focus:border-black"
@@ -216,8 +240,14 @@ export default function StockMovementsPage() {
             </div>
 
             <div>
-              <label className="mb-2 block font-medium">Reference Type</label>
+              <label
+                className="mb-2 block font-medium"
+                htmlFor="stock-movements-field-3"
+              >
+                Reference Type
+              </label>
               <select
+                id="stock-movements-field-3"
                 value={referenceFilter}
                 onChange={(e) => setReferenceFilter(e.target.value)}
                 className="w-full rounded-xl border border-slate-300 p-3 outline-none transition focus:border-black"
@@ -276,7 +306,10 @@ export default function StockMovementsPage() {
                   const unit = movement.product?.unit || "pcs";
 
                   return (
-                    <tr key={movement.id} className="border-b hover:bg-slate-50">
+                    <tr
+                      key={movement.id}
+                      className="border-b hover:bg-slate-50"
+                    >
                       <td className="p-4">{movement.id}</td>
                       <td className="p-4 whitespace-nowrap">
                         {formatDateTime(movement.createdAt)}
@@ -308,7 +341,9 @@ export default function StockMovementsPage() {
                       </td>
                       <td className="p-4">
                         {movement.referenceType || "MANUAL"}
-                        {movement.referenceId ? ` #${movement.referenceId}` : ""}
+                        {movement.referenceId
+                          ? ` #${movement.referenceId}`
+                          : ""}
                       </td>
                       <td className="p-4">{movement.note || "-"}</td>
                       <td className="p-4">{movement.createdBy ?? "-"}</td>
@@ -324,13 +359,7 @@ export default function StockMovementsPage() {
   );
 }
 
-function SummaryCard({
-  label,
-  value,
-}: {
-  label: string;
-  value: string;
-}) {
+function SummaryCard({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-2xl bg-white p-5 text-black shadow-lg">
       <p className="text-sm text-slate-500">{label}</p>

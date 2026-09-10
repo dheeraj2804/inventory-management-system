@@ -4,17 +4,13 @@ import AppShell from "@/components/AppShell";
 
 export const metadata = {
   title: "Inventory Management System",
-  description: "Inventory dashboard app",
+  description: "Gades Sales Co. inventory, purchasing, and sales workspace.",
 };
 
-export default function RootLayout({
-  children,
-}: {
-  children: ReactNode;
-}) {
+export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className="bg-black">
+      <body>
         <AppShell>{children}</AppShell>
       </body>
     </html>
