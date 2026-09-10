@@ -460,7 +460,7 @@ A pull request should explain the problem, resulting behavior, verification perf
 
 ## Author and licensing
 
-Developed by **Dheeraj Reddy Arjula** for **Gades Sales Co.**, and maintained as a personal project.
+Developed by **Dheeraj Reddy Arjula** during my time at **Gades Sales Co.**, and maintained as a personal project.
 
 GitHub: [dheeraj2804](https://github.com/dheeraj2804)
 
