@@ -3,6 +3,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import api from "@/src/lib/api";
+import PageSkeleton from "@/components/PageSkeleton";
+import { errorMessage as getErrorMessage } from "@/src/lib/errors";
 
 type Category = {
   id: number;
@@ -63,7 +65,9 @@ export default function AddProductPage() {
           api.get("/suppliers"),
         ]);
 
-        setCategories(Array.isArray(categoriesRes.data) ? categoriesRes.data : []);
+        setCategories(
+          Array.isArray(categoriesRes.data) ? categoriesRes.data : [],
+        );
         setSuppliers(Array.isArray(suppliersRes.data) ? suppliersRes.data : []);
       } catch (error) {
         console.error("Error loading categories/suppliers:", error);
@@ -96,7 +100,9 @@ export default function AddProductPage() {
       : 0;
 
   const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
+    e: React.ChangeEvent<
+      HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
+    >,
   ) => {
     setErrorMessage("");
     setSuccessMessage("");
@@ -114,9 +120,12 @@ export default function AddProductPage() {
     if (!formData.sku.trim()) return "SKU is required.";
     if (!formData.categoryId) return "Category is required.";
     if (parsedValues.costPrice < 0) return "Cost price cannot be negative.";
-    if (parsedValues.sellingPrice < 0) return "Selling price cannot be negative.";
-    if (parsedValues.currentStock < 0) return "Current stock cannot be negative.";
-    if (parsedValues.minStockLevel < 0) return "Minimum stock level cannot be negative.";
+    if (parsedValues.sellingPrice < 0)
+      return "Selling price cannot be negative.";
+    if (parsedValues.currentStock < 0)
+      return "Current stock cannot be negative.";
+    if (parsedValues.minStockLevel < 0)
+      return "Minimum stock level cannot be negative.";
 
     return "";
   };
@@ -154,32 +163,27 @@ export default function AddProductPage() {
       setTimeout(() => {
         router.push("/products");
       }, 800);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error creating product:", error);
-      setErrorMessage(
-        error?.response?.data?.message || "Failed to create product."
-      );
+      setErrorMessage(getErrorMessage(error, "Failed to create product."));
     } finally {
       setSubmitting(false);
     }
   };
 
   if (pageLoading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-black text-white">
-        Loading add product page...
-      </div>
-    );
+    return <PageSkeleton />;
   }
 
   return (
-    <div className="min-h-screen bg-black p-8 text-white">
+    <div className="legacy-page min-h-screen p-8">
       <div className="mx-auto max-w-5xl">
         <div className="mb-6 flex items-center justify-between gap-4">
           <div>
             <h1 className="text-4xl font-bold">Add Product</h1>
             <p className="mt-2 text-zinc-400">
-              Create a new inventory item and assign it to a category and supplier.
+              Create a new inventory item and assign it to a category and
+              supplier.
             </p>
           </div>
 
@@ -318,8 +322,11 @@ export default function AddProductPage() {
             </div>
 
             <div className="mt-4">
-              <label className="mb-2 block font-medium">Description</label>
+              <label className="mb-2 block font-medium" htmlFor="add-field-1">
+                Description
+              </label>
               <textarea
+                id="add-field-1"
                 name="description"
                 value={formData.description}
                 onChange={handleChange}
@@ -379,13 +386,7 @@ export default function AddProductPage() {
   );
 }
 
-function SummaryRow({
-  label,
-  value,
-}: {
-  label: string;
-  value: string;
-}) {
+function SummaryRow({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-2xl border border-slate-200 p-4">
       <p className="text-sm text-slate-500">{label}</p>
@@ -407,7 +408,9 @@ function Input({
   name: string;
   value: string;
   onChange: (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
+    e: React.ChangeEvent<
+      HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
+    >,
   ) => void;
   placeholder?: string;
   type?: string;
@@ -443,7 +446,9 @@ function NumberInput({
   name: string;
   value: string;
   onChange: (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
+    e: React.ChangeEvent<
+      HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
+    >,
   ) => void;
   placeholder?: string;
   required?: boolean;
@@ -481,7 +486,9 @@ function SelectField({
   name: string;
   value: string;
   onChange: (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
+    e: React.ChangeEvent<
+      HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
+    >,
   ) => void;
   options: { value: string; label: string }[];
   placeholder: string;

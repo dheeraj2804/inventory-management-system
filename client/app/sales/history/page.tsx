@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import api from "@/src/lib/api";
+import PageSkeleton from "@/components/PageSkeleton";
 
 type SaleItem = {
   id: number;
@@ -82,11 +83,19 @@ export default function SalesHistoryPage() {
 
     return sales.filter((sale) => {
       const saleId = String(sale.id);
-      const customerName = (sale.customerName || "Walk-in Customer").toLowerCase();
+      const customerName = (
+        sale.customerName || "Walk-in Customer"
+      ).toLowerCase();
       const itemNames =
-        sale.items?.map((item) => item.product?.name || "").join(" ").toLowerCase() || "";
+        sale.items
+          ?.map((item) => item.product?.name || "")
+          .join(" ")
+          .toLowerCase() || "";
       const itemSkus =
-        sale.items?.map((item) => item.product?.sku || "").join(" ").toLowerCase() || "";
+        sale.items
+          ?.map((item) => item.product?.sku || "")
+          .join(" ")
+          .toLowerCase() || "";
 
       const matchesSearch =
         !term ||
@@ -108,21 +117,27 @@ export default function SalesHistoryPage() {
 
     const totalAmount = filteredSales.reduce(
       (sum, sale) => sum + Number(sale.totalAmount || 0),
-      0
+      0,
     );
 
     const totalUnits = filteredSales.reduce(
       (sum, sale) =>
         sum +
-        (sale.items?.reduce((itemSum, item) => itemSum + Number(item.quantity || 0), 0) || 0),
-      0
+        (sale.items?.reduce(
+          (itemSum, item) => itemSum + Number(item.quantity || 0),
+          0,
+        ) || 0),
+      0,
     );
 
     const totalProfit = filteredSales.reduce(
       (sum, sale) =>
         sum +
-        (sale.items?.reduce((itemSum, item) => itemSum + Number(item.profit || 0), 0) || 0),
-      0
+        (sale.items?.reduce(
+          (itemSum, item) => itemSum + Number(item.profit || 0),
+          0,
+        ) || 0),
+      0,
     );
 
     return {
@@ -153,14 +168,15 @@ export default function SalesHistoryPage() {
       sale.items?.reduce((sum, item) => sum + Number(item.profit || 0), 0) ?? 0,
       sale.createdBy ?? "-",
       sale.items?.length ?? 0,
-      sale.items?.map((item) => `${item.product?.name || "-"} (${item.quantity})`).join(" | ") ??
-        "",
+      sale.items
+        ?.map((item) => `${item.product?.name || "-"} (${item.quantity})`)
+        .join(" | ") ?? "",
     ]);
 
     const csvContent = [
       headers.join(","),
       ...rows.map((row) =>
-        row.map((value) => `"${String(value).replace(/"/g, '""')}"`).join(",")
+        row.map((value) => `"${String(value).replace(/"/g, '""')}"`).join(","),
       ),
     ].join("\n");
 
@@ -177,15 +193,11 @@ export default function SalesHistoryPage() {
   };
 
   if (loading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-black text-white">
-        Loading sales history...
-      </div>
-    );
+    return <PageSkeleton />;
   }
 
   return (
-    <div className="min-h-screen bg-black p-8 text-white">
+    <div className="legacy-page min-h-screen p-8">
       <div className="mx-auto max-w-7xl">
         <div className="mb-6">
           <h1 className="text-4xl font-bold">Sales History</h1>
@@ -195,10 +207,22 @@ export default function SalesHistoryPage() {
         </div>
 
         <div className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-4">
-          <SummaryCard label="Total Sales" value={String(summary.totalRecords)} />
-          <SummaryCard label="Total Units Sold" value={String(summary.totalUnits)} />
-          <SummaryCard label="Total Revenue" value={formatCurrency(summary.totalAmount)} />
-          <SummaryCard label="Total Profit" value={formatCurrency(summary.totalProfit)} />
+          <SummaryCard
+            label="Total Sales"
+            value={String(summary.totalRecords)}
+          />
+          <SummaryCard
+            label="Total Units Sold"
+            value={String(summary.totalUnits)}
+          />
+          <SummaryCard
+            label="Total Revenue"
+            value={formatCurrency(summary.totalAmount)}
+          />
+          <SummaryCard
+            label="Total Profit"
+            value={formatCurrency(summary.totalProfit)}
+          />
         </div>
 
         <div className="mb-6 rounded-3xl bg-white p-6 text-black shadow-lg">
@@ -206,8 +230,14 @@ export default function SalesHistoryPage() {
 
           <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
             <div>
-              <label className="mb-2 block font-medium">Search</label>
+              <label
+                className="mb-2 block font-medium"
+                htmlFor="history-field-1"
+              >
+                Search
+              </label>
               <input
+                id="history-field-1"
                 type="text"
                 placeholder="Search by sale ID, customer, product, SKU"
                 value={searchTerm}
@@ -217,8 +247,14 @@ export default function SalesHistoryPage() {
             </div>
 
             <div>
-              <label className="mb-2 block font-medium">Customer</label>
+              <label
+                className="mb-2 block font-medium"
+                htmlFor="history-field-2"
+              >
+                Customer
+              </label>
               <select
+                id="history-field-2"
                 value={customerFilter}
                 onChange={(e) => setCustomerFilter(e.target.value)}
                 className="w-full rounded-xl border border-slate-300 p-3 outline-none transition focus:border-black"
@@ -278,7 +314,10 @@ export default function SalesHistoryPage() {
               ) : (
                 filteredSales.map((sale) => {
                   const saleProfit =
-                    sale.items?.reduce((sum, item) => sum + Number(item.profit || 0), 0) || 0;
+                    sale.items?.reduce(
+                      (sum, item) => sum + Number(item.profit || 0),
+                      0,
+                    ) || 0;
 
                   return (
                     <tr key={sale.id} className="border-b hover:bg-slate-50">
@@ -289,8 +328,12 @@ export default function SalesHistoryPage() {
                       <td className="p-4 whitespace-nowrap">
                         {formatDateTime(sale.saleDate || sale.createdAt)}
                       </td>
-                      <td className="p-4 text-center">{sale.items?.length || 0}</td>
-                      <td className="p-4 font-semibold">{formatCurrency(sale.totalAmount)}</td>
+                      <td className="p-4 text-center">
+                        {sale.items?.length || 0}
+                      </td>
+                      <td className="p-4 font-semibold">
+                        {formatCurrency(sale.totalAmount)}
+                      </td>
                       <td className="p-4 font-semibold text-green-700">
                         {formatCurrency(saleProfit)}
                       </td>
@@ -316,10 +359,15 @@ export default function SalesHistoryPage() {
             <div className="max-h-[90vh] w-full max-w-6xl overflow-y-auto rounded-3xl bg-white p-6 text-black shadow-2xl">
               <div className="mb-5 flex items-center justify-between gap-4">
                 <div>
-                  <h2 className="text-3xl font-bold">Sale #{selectedSale.id} Details</h2>
+                  <h2 className="text-3xl font-bold">
+                    Sale #{selectedSale.id} Details
+                  </h2>
                   <p className="mt-1 text-slate-600">
-                    Customer: {selectedSale.customerName || "Walk-in Customer"} • Date:{" "}
-                    {formatDateTime(selectedSale.saleDate || selectedSale.createdAt)}
+                    Customer: {selectedSale.customerName || "Walk-in Customer"}{" "}
+                    • Date:{" "}
+                    {formatDateTime(
+                      selectedSale.saleDate || selectedSale.createdAt,
+                    )}
                   </p>
                 </div>
 
@@ -332,7 +380,10 @@ export default function SalesHistoryPage() {
               </div>
 
               <div className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-4">
-                <MiniCard label="Items" value={String(selectedSale.items?.length || 0)} />
+                <MiniCard
+                  label="Items"
+                  value={String(selectedSale.items?.length || 0)}
+                />
                 <MiniCard
                   label="Revenue"
                   value={formatCurrency(selectedSale.totalAmount || 0)}
@@ -342,11 +393,14 @@ export default function SalesHistoryPage() {
                   value={formatCurrency(
                     selectedSale.items?.reduce(
                       (sum, item) => sum + Number(item.profit || 0),
-                      0
-                    ) || 0
+                      0,
+                    ) || 0,
                   )}
                 />
-                <MiniCard label="Created By" value={String(selectedSale.createdBy ?? "-")} />
+                <MiniCard
+                  label="Created By"
+                  value={String(selectedSale.createdBy ?? "-")}
+                />
               </div>
 
               <div className="overflow-hidden rounded-2xl border">
@@ -366,14 +420,22 @@ export default function SalesHistoryPage() {
                     {selectedSale.items?.length ? (
                       selectedSale.items.map((item) => (
                         <tr key={item.id} className="border-b">
-                          <td className="p-3 font-medium">{item.product?.name || "-"}</td>
+                          <td className="p-3 font-medium">
+                            {item.product?.name || "-"}
+                          </td>
                           <td className="p-3">{item.product?.sku || "-"}</td>
                           <td className="p-3">
                             {item.quantity} {item.product?.unit || "pcs"}
                           </td>
-                          <td className="p-3">{formatCurrency(item.unitPrice)}</td>
-                          <td className="p-3">{formatCurrency(item.unitCostAtSale)}</td>
-                          <td className="p-3 font-semibold">{formatCurrency(item.subtotal)}</td>
+                          <td className="p-3">
+                            {formatCurrency(item.unitPrice)}
+                          </td>
+                          <td className="p-3">
+                            {formatCurrency(item.unitCostAtSale)}
+                          </td>
+                          <td className="p-3 font-semibold">
+                            {formatCurrency(item.subtotal)}
+                          </td>
                           <td className="p-3 font-semibold text-green-700">
                             {formatCurrency(item.profit)}
                           </td>
@@ -381,7 +443,10 @@ export default function SalesHistoryPage() {
                       ))
                     ) : (
                       <tr>
-                        <td colSpan={7} className="p-6 text-center text-slate-500">
+                        <td
+                          colSpan={7}
+                          className="p-6 text-center text-slate-500"
+                        >
                           No sale items found.
                         </td>
                       </tr>
@@ -397,13 +462,7 @@ export default function SalesHistoryPage() {
   );
 }
 
-function SummaryCard({
-  label,
-  value,
-}: {
-  label: string;
-  value: string;
-}) {
+function SummaryCard({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-2xl bg-white p-5 text-black shadow-lg">
       <p className="text-sm text-slate-500">{label}</p>
@@ -412,13 +471,7 @@ function SummaryCard({
   );
 }
 
-function MiniCard({
-  label,
-  value,
-}: {
-  label: string;
-  value: string;
-}) {
+function MiniCard({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-2xl border border-slate-200 p-4">
       <p className="text-sm text-slate-500">{label}</p>

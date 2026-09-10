@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import api from "@/src/lib/api";
+import PageSkeleton from "@/components/PageSkeleton";
 
 type PurchaseItem = {
   id: number;
@@ -50,7 +51,9 @@ export default function PurchasesHistoryPage() {
 
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedSupplier, setSelectedSupplier] = useState("");
-  const [expandedPurchaseId, setExpandedPurchaseId] = useState<number | null>(null);
+  const [expandedPurchaseId, setExpandedPurchaseId] = useState<number | null>(
+    null,
+  );
 
   const fetchPurchases = async () => {
     try {
@@ -88,9 +91,15 @@ export default function PurchasesHistoryPage() {
       const supplierName = purchase.supplier?.name?.toLowerCase() || "";
       const purchaseId = String(purchase.id);
       const itemNames =
-        purchase.items?.map((item) => item.product?.name || "").join(" ").toLowerCase() || "";
+        purchase.items
+          ?.map((item) => item.product?.name || "")
+          .join(" ")
+          .toLowerCase() || "";
       const itemSkus =
-        purchase.items?.map((item) => item.product?.sku || "").join(" ").toLowerCase() || "";
+        purchase.items
+          ?.map((item) => item.product?.sku || "")
+          .join(" ")
+          .toLowerCase() || "";
 
       const matchesSearch =
         !term ||
@@ -111,13 +120,16 @@ export default function PurchasesHistoryPage() {
     const totalRecords = filteredPurchases.length;
     const totalAmount = filteredPurchases.reduce(
       (sum, purchase) => sum + Number(purchase.totalAmount || 0),
-      0
+      0,
     );
     const totalItems = filteredPurchases.reduce(
       (sum, purchase) =>
         sum +
-        (purchase.items?.reduce((itemSum, item) => itemSum + Number(item.quantity || 0), 0) || 0),
-      0
+        (purchase.items?.reduce(
+          (itemSum, item) => itemSum + Number(item.quantity || 0),
+          0,
+        ) || 0),
+      0,
     );
 
     return {
@@ -145,14 +157,15 @@ export default function PurchasesHistoryPage() {
       purchase.totalAmount ?? 0,
       purchase.createdBy ?? "-",
       purchase.items?.length ?? 0,
-      purchase.items?.map((item) => `${item.product?.name || "-"} (${item.quantity})`).join(" | ") ??
-        "",
+      purchase.items
+        ?.map((item) => `${item.product?.name || "-"} (${item.quantity})`)
+        .join(" | ") ?? "",
     ]);
 
     const csvContent = [
       headers.join(","),
       ...rows.map((row) =>
-        row.map((value) => `"${String(value).replace(/"/g, '""')}"`).join(",")
+        row.map((value) => `"${String(value).replace(/"/g, '""')}"`).join(","),
       ),
     ].join("\n");
 
@@ -169,15 +182,11 @@ export default function PurchasesHistoryPage() {
   };
 
   if (loading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-black text-white">
-        Loading purchases history...
-      </div>
-    );
+    return <PageSkeleton />;
   }
 
   return (
-    <div className="min-h-screen bg-black p-8 text-white">
+    <div className="legacy-page min-h-screen p-8">
       <div className="mx-auto max-w-7xl">
         <div className="mb-6">
           <h1 className="text-4xl font-bold">Purchases History</h1>
@@ -187,9 +196,18 @@ export default function PurchasesHistoryPage() {
         </div>
 
         <div className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-3">
-          <SummaryCard label="Total Purchases" value={String(summary.totalRecords)} />
-          <SummaryCard label="Total Units Purchased" value={String(summary.totalItems)} />
-          <SummaryCard label="Total Purchase Value" value={formatCurrency(summary.totalAmount)} />
+          <SummaryCard
+            label="Total Purchases"
+            value={String(summary.totalRecords)}
+          />
+          <SummaryCard
+            label="Total Units Purchased"
+            value={String(summary.totalItems)}
+          />
+          <SummaryCard
+            label="Total Purchase Value"
+            value={formatCurrency(summary.totalAmount)}
+          />
         </div>
 
         <div className="mb-6 rounded-3xl bg-white p-6 text-black shadow-lg">
@@ -197,8 +215,14 @@ export default function PurchasesHistoryPage() {
 
           <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
             <div>
-              <label className="mb-2 block font-medium">Search</label>
+              <label
+                className="mb-2 block font-medium"
+                htmlFor="history-field-1"
+              >
+                Search
+              </label>
               <input
+                id="history-field-1"
                 type="text"
                 placeholder="Search by purchase ID, supplier, product, SKU"
                 value={searchTerm}
@@ -208,8 +232,14 @@ export default function PurchasesHistoryPage() {
             </div>
 
             <div>
-              <label className="mb-2 block font-medium">Supplier</label>
+              <label
+                className="mb-2 block font-medium"
+                htmlFor="history-field-2"
+              >
+                Supplier
+              </label>
               <select
+                id="history-field-2"
                 value={selectedSupplier}
                 onChange={(e) => setSelectedSupplier(e.target.value)}
                 className="w-full rounded-xl border border-slate-300 p-3 outline-none transition focus:border-black"
@@ -271,11 +301,18 @@ export default function PurchasesHistoryPage() {
 
                   return (
                     <>
-                      <tr key={purchase.id} className="border-b hover:bg-slate-50">
+                      <tr
+                        key={purchase.id}
+                        className="border-b hover:bg-slate-50"
+                      >
                         <td className="p-4 font-semibold">#{purchase.id}</td>
-                        <td className="p-4">{purchase.supplier?.name || "-"}</td>
+                        <td className="p-4">
+                          {purchase.supplier?.name || "-"}
+                        </td>
                         <td className="p-4 whitespace-nowrap">
-                          {formatDateTime(purchase.purchaseDate || purchase.createdAt)}
+                          {formatDateTime(
+                            purchase.purchaseDate || purchase.createdAt,
+                          )}
                         </td>
                         <td className="p-4">{purchase.items?.length || 0}</td>
                         <td className="p-4 font-semibold">
@@ -285,7 +322,9 @@ export default function PurchasesHistoryPage() {
                         <td className="p-4">
                           <button
                             onClick={() =>
-                              setExpandedPurchaseId(isExpanded ? null : purchase.id)
+                              setExpandedPurchaseId(
+                                isExpanded ? null : purchase.id,
+                              )
                             }
                             className="rounded-lg bg-black px-4 py-2 text-sm font-semibold text-white transition hover:bg-zinc-800"
                           >
@@ -320,9 +359,12 @@ export default function PurchasesHistoryPage() {
                                           <td className="p-3 font-medium">
                                             {item.product?.name || "-"}
                                           </td>
-                                          <td className="p-3">{item.product?.sku || "-"}</td>
                                           <td className="p-3">
-                                            {item.quantity} {item.product?.unit || "pcs"}
+                                            {item.product?.sku || "-"}
+                                          </td>
+                                          <td className="p-3">
+                                            {item.quantity}{" "}
+                                            {item.product?.unit || "pcs"}
                                           </td>
                                           <td className="p-3">
                                             {formatCurrency(item.unitCost)}
@@ -336,7 +378,9 @@ export default function PurchasesHistoryPage() {
                                   </table>
                                 </div>
                               ) : (
-                                <p className="text-slate-500">No purchase items found.</p>
+                                <p className="text-slate-500">
+                                  No purchase items found.
+                                </p>
                               )}
                             </div>
                           </td>
@@ -354,13 +398,7 @@ export default function PurchasesHistoryPage() {
   );
 }
 
-function SummaryCard({
-  label,
-  value,
-}: {
-  label: string;
-  value: string;
-}) {
+function SummaryCard({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-2xl bg-white p-5 text-black shadow-lg">
       <p className="text-sm text-slate-500">{label}</p>

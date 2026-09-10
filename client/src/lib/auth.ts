@@ -10,6 +10,7 @@ export type AuthUser = {
 
 export const saveToken = (token: string) => {
   localStorage.setItem(TOKEN_KEY, token);
+  window.dispatchEvent(new Event("auth-changed"));
 };
 
 export const getToken = () => {
@@ -20,6 +21,7 @@ export const getToken = () => {
 export const removeToken = () => {
   localStorage.removeItem(TOKEN_KEY);
   localStorage.removeItem(USER_KEY);
+  window.dispatchEvent(new Event("auth-changed"));
 };
 
 export const isAuthenticated = () => {

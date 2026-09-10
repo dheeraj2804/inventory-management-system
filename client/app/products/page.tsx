@@ -1,8 +1,11 @@
 "use client";
 
 import toast from "react-hot-toast";
-import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import api from "@/src/lib/api";
+import PageSkeleton from "@/components/PageSkeleton";
+import { errorMessage } from "@/src/lib/errors";
 
 type Product = {
   id: number;
@@ -60,6 +63,15 @@ const formatCurrency = (value: number) =>
   }).format(Number(value || 0));
 
 export default function ProductsPage() {
+  return (
+    <Suspense fallback={<PageSkeleton />}>
+      <ProductsContent />
+    </Suspense>
+  );
+}
+
+function ProductsContent() {
+  const query = useSearchParams();
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
@@ -83,7 +95,9 @@ export default function ProductsPage() {
       ]);
 
       setProducts(Array.isArray(productsRes.data) ? productsRes.data : []);
-      setCategories(Array.isArray(categoriesRes.data) ? categoriesRes.data : []);
+      setCategories(
+        Array.isArray(categoriesRes.data) ? categoriesRes.data : [],
+      );
       setSuppliers(Array.isArray(suppliersRes.data) ? suppliersRes.data : []);
     } catch (error) {
       console.error("Error fetching products data:", error);
@@ -94,8 +108,10 @@ export default function ProductsPage() {
   };
 
   useEffect(() => {
+    setSearchTerm(query.get("q") || "");
+    setLowStockOnly(query.get("stock") === "low");
     fetchData();
-  }, []);
+  }, [query]);
 
   const categoryOptions = useMemo(() => {
     const map = new Map<number, Category>();
@@ -128,10 +144,7 @@ export default function ProductsPage() {
         : true;
 
       return (
-        matchesSearch &&
-        matchesCategory &&
-        matchesSupplier &&
-        matchesLowStock
+        matchesSearch && matchesCategory && matchesSupplier && matchesLowStock
       );
     });
   }, [products, searchTerm, selectedCategory, selectedSupplier, lowStockOnly]);
@@ -179,9 +192,7 @@ export default function ProductsPage() {
     const csvContent = [
       headers.join(","),
       ...rows.map((row) =>
-        row
-          .map((value) => `"${String(value).replace(/"/g, '""')}"`)
-          .join(",")
+        row.map((value) => `"${String(value).replace(/"/g, '""')}"`).join(","),
       ),
     ].join("\n");
 
@@ -221,7 +232,9 @@ export default function ProductsPage() {
   };
 
   const handleEditChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
+    e: React.ChangeEvent<
+      HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
+    >,
   ) => {
     if (!editFormData) return;
 
@@ -267,32 +280,34 @@ export default function ProductsPage() {
 
   const handleDeleteProduct = async (id: number, name: string) => {
     const confirmed = window.confirm(
-      `Are you sure you want to delete "${name}"?`
+      `Are you sure you want to delete "${name}"?`,
     );
 
     if (!confirmed) return;
 
     try {
       const res = await api.delete(`/products/${id}`);
-      toast.success(res.data.message || `Product "${name}" deleted successfully.`);
+      toast.success(
+        res.data.message || `Product "${name}" deleted successfully.`,
+      );
       fetchData();
-    } catch (error: any) {
-      const backendMessage =
-        error?.response?.data?.message ||
-        error?.response?.data?.error?.cause?.originalMessage ||
-        error?.response?.data?.error?.message ||
-        "";
+    } catch (error: unknown) {
+      const backendMessage = errorMessage(error, "");
 
       if (
-        backendMessage.includes("linked to purchases, sales, or stock history") ||
-        backendMessage.includes("violates RESTRICT setting of foreign key constraint") ||
+        backendMessage.includes(
+          "linked to purchases, sales, or stock history",
+        ) ||
+        backendMessage.includes(
+          "violates RESTRICT setting of foreign key constraint",
+        ) ||
         backendMessage.includes("is referenced from table") ||
         backendMessage.includes("PurchaseItem_productId_fkey") ||
         backendMessage.includes("SaleItem") ||
         backendMessage.includes("StockMovement")
       ) {
         toast.error(
-          `Cannot delete "${name}" because it is already linked to purchases, sales, or stock history.`
+          `Cannot delete "${name}" because it is already linked to purchases, sales, or stock history.`,
         );
         return;
       }
@@ -307,11 +322,11 @@ export default function ProductsPage() {
   };
 
   if (loading) {
-    return <div className="p-6 text-white">Loading products...</div>;
+    return <PageSkeleton />;
   }
 
   return (
-    <div className="min-h-screen bg-black p-8 text-white">
+    <div className="legacy-page min-h-screen p-8">
       <h1 className="mb-6 text-4xl font-bold">Products</h1>
 
       <div className="mb-6 rounded-2xl bg-white p-5 text-black shadow-lg">
@@ -319,8 +334,14 @@ export default function ProductsPage() {
 
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
           <div>
-            <label className="mb-2 block font-medium">Search</label>
+            <label
+              className="mb-2 block font-medium"
+              htmlFor="products-field-1"
+            >
+              Search
+            </label>
             <input
+              id="products-field-1"
               type="text"
               placeholder="Search by name or SKU"
               value={searchTerm}
@@ -330,8 +351,14 @@ export default function ProductsPage() {
           </div>
 
           <div>
-            <label className="mb-2 block font-medium">Category</label>
+            <label
+              className="mb-2 block font-medium"
+              htmlFor="products-field-2"
+            >
+              Category
+            </label>
             <select
+              id="products-field-2"
               value={selectedCategory}
               onChange={(e) => setSelectedCategory(e.target.value)}
               className="w-full rounded-lg border p-3"
@@ -346,8 +373,14 @@ export default function ProductsPage() {
           </div>
 
           <div>
-            <label className="mb-2 block font-medium">Supplier</label>
+            <label
+              className="mb-2 block font-medium"
+              htmlFor="products-field-3"
+            >
+              Supplier
+            </label>
             <select
+              id="products-field-3"
               value={selectedSupplier}
               onChange={(e) => setSelectedSupplier(e.target.value)}
               className="w-full rounded-lg border p-3"
@@ -434,7 +467,9 @@ export default function ProductsPage() {
                     <td className="p-4">{product.category?.name ?? "-"}</td>
                     <td className="p-4">{product.supplier?.name ?? "-"}</td>
                     <td className="p-4">{formatCurrency(product.costPrice)}</td>
-                    <td className="p-4">{formatCurrency(product.sellingPrice)}</td>
+                    <td className="p-4">
+                      {formatCurrency(product.sellingPrice)}
+                    </td>
                     <td className="p-4">{product.currentStock}</td>
                     <td className="p-4">{product.minStockLevel}</td>
                     <td className="p-4">{product.unit}</td>
@@ -494,8 +529,14 @@ export default function ProductsPage() {
               className="grid grid-cols-1 gap-4 md:grid-cols-2"
             >
               <div>
-                <label className="mb-2 block font-medium">Name</label>
+                <label
+                  className="mb-2 block font-medium"
+                  htmlFor="products-field-4"
+                >
+                  Name
+                </label>
                 <input
+                  id="products-field-4"
                   type="text"
                   name="name"
                   value={editFormData.name}
@@ -506,8 +547,14 @@ export default function ProductsPage() {
               </div>
 
               <div>
-                <label className="mb-2 block font-medium">SKU</label>
+                <label
+                  className="mb-2 block font-medium"
+                  htmlFor="products-field-5"
+                >
+                  SKU
+                </label>
                 <input
+                  id="products-field-5"
                   type="text"
                   name="sku"
                   value={editFormData.sku}
@@ -518,8 +565,14 @@ export default function ProductsPage() {
               </div>
 
               <div>
-                <label className="mb-2 block font-medium">Barcode</label>
+                <label
+                  className="mb-2 block font-medium"
+                  htmlFor="products-field-6"
+                >
+                  Barcode
+                </label>
                 <input
+                  id="products-field-6"
                   type="text"
                   name="barcode"
                   value={editFormData.barcode}
@@ -529,8 +582,14 @@ export default function ProductsPage() {
               </div>
 
               <div>
-                <label className="mb-2 block font-medium">Category</label>
+                <label
+                  className="mb-2 block font-medium"
+                  htmlFor="products-field-7"
+                >
+                  Category
+                </label>
                 <select
+                  id="products-field-7"
                   name="categoryId"
                   value={editFormData.categoryId}
                   onChange={handleEditChange}
@@ -547,8 +606,14 @@ export default function ProductsPage() {
               </div>
 
               <div>
-                <label className="mb-2 block font-medium">Supplier</label>
+                <label
+                  className="mb-2 block font-medium"
+                  htmlFor="products-field-8"
+                >
+                  Supplier
+                </label>
                 <select
+                  id="products-field-8"
                   name="supplierId"
                   value={editFormData.supplierId}
                   onChange={handleEditChange}
@@ -564,8 +629,14 @@ export default function ProductsPage() {
               </div>
 
               <div>
-                <label className="mb-2 block font-medium">Cost Price</label>
+                <label
+                  className="mb-2 block font-medium"
+                  htmlFor="products-field-9"
+                >
+                  Cost Price
+                </label>
                 <input
+                  id="products-field-9"
                   type="number"
                   name="costPrice"
                   value={editFormData.costPrice}
@@ -576,8 +647,14 @@ export default function ProductsPage() {
               </div>
 
               <div>
-                <label className="mb-2 block font-medium">Selling Price</label>
+                <label
+                  className="mb-2 block font-medium"
+                  htmlFor="products-field-10"
+                >
+                  Selling Price
+                </label>
                 <input
+                  id="products-field-10"
                   type="number"
                   name="sellingPrice"
                   value={editFormData.sellingPrice}
@@ -588,8 +665,14 @@ export default function ProductsPage() {
               </div>
 
               <div>
-                <label className="mb-2 block font-medium">Current Stock</label>
+                <label
+                  className="mb-2 block font-medium"
+                  htmlFor="products-field-11"
+                >
+                  Current Stock
+                </label>
                 <input
+                  id="products-field-11"
                   type="number"
                   name="currentStock"
                   value={editFormData.currentStock}
@@ -600,8 +683,14 @@ export default function ProductsPage() {
               </div>
 
               <div>
-                <label className="mb-2 block font-medium">Min Stock Level</label>
+                <label
+                  className="mb-2 block font-medium"
+                  htmlFor="products-field-12"
+                >
+                  Min Stock Level
+                </label>
                 <input
+                  id="products-field-12"
                   type="number"
                   name="minStockLevel"
                   value={editFormData.minStockLevel}
@@ -612,8 +701,14 @@ export default function ProductsPage() {
               </div>
 
               <div>
-                <label className="mb-2 block font-medium">Unit</label>
+                <label
+                  className="mb-2 block font-medium"
+                  htmlFor="products-field-13"
+                >
+                  Unit
+                </label>
                 <input
+                  id="products-field-13"
                   type="text"
                   name="unit"
                   value={editFormData.unit}
@@ -624,8 +719,14 @@ export default function ProductsPage() {
               </div>
 
               <div className="md:col-span-2">
-                <label className="mb-2 block font-medium">Description</label>
+                <label
+                  className="mb-2 block font-medium"
+                  htmlFor="products-field-14"
+                >
+                  Description
+                </label>
                 <textarea
+                  id="products-field-14"
                   name="description"
                   value={editFormData.description}
                   onChange={handleEditChange}

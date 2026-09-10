@@ -1,780 +1,536 @@
 "use client";
-
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
-import api from "@/src/lib/api";
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  Legend,
-  LineChart,
-  Line,
-} from "recharts";
-
-type SummaryData = {
-  totalProducts?: number;
-  totalCategories?: number;
-  totalSuppliers?: number;
-  stockUnits?: number;
-  inventoryValue?: number;
-  totalPurchases?: number;
-  totalSales?: number;
-  profit?: number;
-  lowStockItems?: number;
+import dynamic from "next/dynamic";
+import api, { clearApiCache, isDemoMode } from "@/src/lib/api";
+import type { Product, Transaction, Movement } from "@/src/lib/demo";
+import Icon, { type IconName } from "@/components/Icon";
+import PageSkeleton from "@/components/PageSkeleton";
+const RevenueChart = dynamic(() => import("@/components/RevenueChart"), {
+  loading: () => <div className="skeleton" style={{ height: 240 }} />,
+  ssr: false,
+});
+type Summary = {
+  totalProducts: number;
+  totalCategories: number;
+  totalSuppliers: number;
+  totalStockUnits: number;
+  totalInventoryValue: number;
+  totalPurchaseAmount: number;
+  totalSalesAmount: number;
+  totalProfit: number;
+  lowStockCount: number;
 };
-
-type PurchaseItem = {
-  id: number;
-  supplier?: {
-    name?: string;
-  };
-  totalAmount?: number;
-  purchaseDate?: string;
+type Data = {
+  summary: Summary;
+  products: (Product & { category?: { name: string } })[];
+  sales: Transaction[];
+  purchases: Transaction[];
+  movements: (Movement & { product?: Product })[];
 };
-
-type SaleItem = {
-  id: number;
-  customerName?: string | null;
-  totalAmount?: number;
-  saleDate?: string;
-};
-
-type StockMovementItem = {
-  id: number;
-  movementType: string;
-  quantity?: number;
-  createdAt: string;
-  referenceType?: string | null;
-  referenceId?: number | null;
-  product?: {
-    id: number;
-    name?: string;
-    sku?: string;
-  };
-};
-
-type Product = {
-  id: number;
-  name?: string;
-  sku?: string;
-  currentStock?: number;
-  minStockLevel?: number;
-  costPrice?: number;
-  sellingPrice?: number;
-};
-
-type AnalyticsChartData = {
-  label?: string;
-  sales?: number;
-  purchases?: number;
-  profit?: number;
-};
-
-const toNumber = (value: unknown): number => {
-  if (typeof value === "number" && Number.isFinite(value)) return value;
-  if (typeof value === "string") {
-    const parsed = Number(value);
-    return Number.isFinite(parsed) ? parsed : 0;
-  }
-  return 0;
-};
-
-const formatCurrency = (value: unknown): string => {
-  return new Intl.NumberFormat("en-US", {
+const money = (n: number) =>
+  new Intl.NumberFormat("en-US", {
     style: "currency",
     currency: "USD",
-    maximumFractionDigits: 2,
-  }).format(toNumber(value));
-};
-
-const formatDateTime = (value?: string): string => {
-  if (!value) return "-";
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? "-" : date.toLocaleString();
-};
-
-function MetricCard({
+    maximumFractionDigits: 0,
+  }).format(n || 0);
+function Metric({
   label,
   value,
+  caption,
+  icon,
   href,
+  tone = "green",
 }: {
   label: string;
-  value: string | number;
-  href?: string;
+  value: string;
+  caption: string;
+  icon: IconName;
+  href: string;
+  tone?: string;
 }) {
-  const content = (
-    <div className="rounded-2xl bg-white p-5 text-black shadow-lg transition hover:-translate-y-0.5 hover:shadow-xl">
-      <p className="text-sm font-medium text-slate-500">{label}</p>
-      <p className="mt-2 text-3xl font-bold tracking-tight">{value}</p>
-    </div>
+  return (
+    <Link href={href} className={`metric-card ${tone}`}>
+      <div className="metric-top">
+        <span>{label}</span>
+        <span className="metric-icon">
+          <Icon name={icon} size={19} />
+        </span>
+      </div>
+      <strong>{value}</strong>
+      <div className="metric-bottom">
+        <span>{caption}</span>
+        <Icon name="arrow" size={16} />
+      </div>
+    </Link>
   );
-
-  if (!href) return content;
-
-  return <Link href={href}>{content}</Link>;
 }
-
 export default function DashboardPage() {
-  const [viewMode, setViewMode] = useState<"overview" | "analytics">(
-    "overview",
-  );
-
-  const [summary, setSummary] = useState<SummaryData | null>(null);
-  const [recentPurchases, setRecentPurchases] = useState<PurchaseItem[]>([]);
-  const [recentSales, setRecentSales] = useState<SaleItem[]>([]);
-  const [recentMovements, setRecentMovements] = useState<StockMovementItem[]>(
-    [],
-  );
-  const [products, setProducts] = useState<Product[]>([]);
-
-  const [analyticsData, setAnalyticsData] = useState<AnalyticsChartData[]>([]);
-  const [analyticsProducts, setAnalyticsProducts] = useState<Product[]>([]);
-  const [selectedProductId, setSelectedProductId] = useState("");
-
-  const [loading, setLoading] = useState(true);
-
-  const fetchOverviewData = async () => {
+  const [data, setData] = useState<Data | null>(null),
+    [error, setError] = useState(""),
+    [refreshing, setRefreshing] = useState(false),
+    [days, setDays] = useState(30),
+    [productFilter, setProductFilter] = useState("");
+  const load = useCallback(async () => {
+    setRefreshing(true);
+    setError("");
     try {
-      const [summaryRes, purchasesRes, salesRes, movementsRes, productsRes] =
+      const [summary, products, sales, purchases, movements] =
         await Promise.all([
           api.get("/dashboard/summary"),
-          api.get("/purchases"),
-          api.get("/sales"),
-          api.get("/stock-movements"),
           api.get("/products"),
+          api.get("/sales"),
+          api.get("/purchases"),
+          api.get("/dashboard/recent-movements"),
         ]);
-
-      setSummary(summaryRes.data ?? {});
-      setRecentPurchases(
-        Array.isArray(purchasesRes.data) ? purchasesRes.data.slice(0, 5) : [],
+      setData({
+        summary: summary.data,
+        products: products.data,
+        sales: sales.data,
+        purchases: purchases.data,
+        movements: movements.data,
+      });
+    } catch {
+      setError(
+        "We couldn’t load your overview. Check the API connection and try again.",
       );
-      setRecentSales(
-        Array.isArray(salesRes.data) ? salesRes.data.slice(0, 5) : [],
-      );
-      setRecentMovements(
-        Array.isArray(movementsRes.data) ? movementsRes.data.slice(0, 5) : [],
-      );
-      setProducts(Array.isArray(productsRes.data) ? productsRes.data : []);
-      setAnalyticsProducts(
-        Array.isArray(productsRes.data) ? productsRes.data : [],
-      );
-    } catch (error) {
-      console.error("Error fetching overview dashboard data:", error);
-      setSummary({});
-      setRecentPurchases([]);
-      setRecentSales([]);
-      setRecentMovements([]);
-      setProducts([]);
-      setAnalyticsProducts([]);
+    } finally {
+      setRefreshing(false);
     }
-  };
-
-  const fetchAnalyticsData = async (productId?: string) => {
-    try {
-      const url = productId
-        ? `/dashboard/analytics?productId=${productId}`
-        : "/dashboard/analytics";
-
-      const res = await api.get(url);
-      const rawChartData = Array.isArray(res.data?.chartData)
-        ? res.data.chartData
-        : [];
-      setAnalyticsData(rawChartData);
-    } catch (error) {
-      console.error("Error fetching analytics:", error);
-      setAnalyticsData([]);
-    }
-  };
-
-  useEffect(() => {
-    const loadAll = async () => {
-      setLoading(true);
-      await fetchOverviewData();
-      await fetchAnalyticsData();
-      setLoading(false);
-    };
-
-    loadAll();
   }, []);
-
   useEffect(() => {
-    if (viewMode === "analytics") {
-      fetchAnalyticsData(selectedProductId);
-    }
-  }, [viewMode, selectedProductId]);
-
-  const normalizedProducts = useMemo(() => {
-    return products.map((product) => ({
-      id: product.id,
-      name: product.name || "Unnamed Product",
-      sku: product.sku || "-",
-      currentStock: toNumber(product.currentStock),
-      minStockLevel: toNumber(product.minStockLevel),
-      costPrice: toNumber(product.costPrice),
-      sellingPrice: toNumber(product.sellingPrice),
-    }));
-  }, [products]);
-
-  const lowStockProducts = useMemo(() => {
-    return normalizedProducts
-      .filter((product) => product.currentStock <= product.minStockLevel)
-      .sort((a, b) => a.currentStock - b.currentStock);
-  }, [normalizedProducts]);
-
-  const safeSummary = useMemo(() => {
-    const s = summary ?? {};
-
-    return {
-      totalProducts: toNumber(s.totalProducts),
-      totalCategories: toNumber(s.totalCategories),
-      totalSuppliers: toNumber(s.totalSuppliers),
-      stockUnits: toNumber(s.stockUnits),
-      inventoryValue: toNumber(s.inventoryValue),
-      totalPurchases: toNumber(s.totalPurchases),
-      totalSales: toNumber(s.totalSales),
-      profit: toNumber(s.profit),
-      lowStockItems:
-        toNumber(s.lowStockItems) ||
-        normalizedProducts.filter(
-          (product) => product.currentStock <= product.minStockLevel,
-        ).length,
+    void load();
+    const refresh = () => {
+      clearApiCache();
+      void load();
     };
-  }, [summary, normalizedProducts]);
-
-  const metricCards = useMemo(() => {
-    return [
-      {
-        label: "Total Products",
-        value: safeSummary.totalProducts,
-        href: "/products",
-      },
-      {
-        label: "Total Categories",
-        value: safeSummary.totalCategories,
-        href: "/categories",
-      },
-      {
-        label: "Total Suppliers",
-        value: safeSummary.totalSuppliers,
-        href: "/suppliers",
-      },
-      {
-        label: "Stock Units",
-        value: safeSummary.stockUnits,
-        href: "/stock-movements",
-      },
-      {
-        label: "Inventory Value",
-        value: formatCurrency(safeSummary.inventoryValue),
-        href: "/products",
-      },
-      {
-        label: "Total Purchases",
-        value: formatCurrency(safeSummary.totalPurchases),
-        href: "/purchases/history",
-      },
-      {
-        label: "Total Sales",
-        value: formatCurrency(safeSummary.totalSales),
-        href: "/sales/history",
-      },
-      {
-        label: "Profit",
-        value: formatCurrency(safeSummary.profit),
-        href: "/sales/history",
-      },
-      {
-        label: "Low Stock Items",
-        value: safeSummary.lowStockItems,
-        href: "/products",
-      },
-    ];
-  }, [safeSummary]);
-
-  const normalizedAnalyticsData = useMemo(() => {
-    return analyticsData.map((item, index) => ({
-      label: item.label || `Item ${index + 1}`,
-      sales: toNumber(item.sales),
-      purchases: toNumber(item.purchases),
-      profit: toNumber(item.profit),
-    }));
-  }, [analyticsData]);
-
-  const lowStockChartData = useMemo(() => {
-    return lowStockProducts.slice(0, 6).map((product) => ({
-      name: product.name,
-      currentStock: product.currentStock,
-      minStockLevel: product.minStockLevel,
-    }));
-  }, [lowStockProducts]);
-
-  if (loading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-black text-white">
-        Loading dashboard...
-      </div>
-    );
+    window.addEventListener("inventory-updated", refresh);
+    return () => window.removeEventListener("inventory-updated", refresh);
+  }, [load]);
+  const chart = useMemo(() => {
+    const buckets = new Map<
+      string,
+      { label: string; sales: number; purchases: number }
+    >();
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const key = (d: Date) =>
+      `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+    for (let i = days - 1; i >= 0; i--) {
+      const d = new Date(today);
+      d.setDate(d.getDate() - i);
+      buckets.set(key(d), {
+        label: d.toLocaleDateString("en-US", {
+          month: "short",
+          day: "numeric",
+        }),
+        sales: 0,
+        purchases: 0,
+      });
+    }
+    for (const kind of ["sales", "purchases"] as const)
+      for (const t of data?.[kind] || []) {
+        const d = new Date(t.saleDate || t.purchaseDate || "");
+        const b = buckets.get(key(d));
+        if (b)
+          b[kind] += productFilter
+            ? t.items
+                .filter((i) => i.productId === Number(productFilter))
+                .reduce((s, i) => s + i.subtotal, 0)
+            : t.totalAmount;
+      }
+    return [...buckets.values()];
+  }, [data, days, productFilter]);
+  if (!data) {
+    if (error)
+      return (
+        <div className="dashboard-page">
+          <div className="error-panel">
+            <Icon name="alert" />
+            <h1>Let’s reconnect.</h1>
+            <p>{error}</p>
+            <button className="button primary" onClick={load}>
+              Try again
+            </button>
+          </div>
+        </div>
+      );
+    return <PageSkeleton />;
   }
-
+  const { summary: s, products } = data,
+    low = products
+      .filter((p) => p.currentStock <= p.minStockLevel)
+      .sort((a, b) => a.currentStock - b.currentStock),
+    out = products.filter((p) => p.currentStock === 0).length,
+    healthy = products.length - low.length;
+  const totalChartSales = chart.reduce((sum, d) => sum + d.sales, 0),
+    totalChartPurchases = chart.reduce((sum, d) => sum + d.purchases, 0);
+  const categories = Object.entries(
+    products.reduce<Record<string, number>>((acc, p) => {
+      const c = p.category?.name || "Uncategorized";
+      acc[c] = (acc[c] || 0) + p.currentStock;
+      return acc;
+    }, {}),
+  ).sort((a, b) => b[1] - a[1]);
   return (
-    <div className="min-h-screen bg-black p-8 text-white">
-      <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
+    <div className="dashboard-page">
+      <div className="page-heading">
         <div>
-          <h1 className="text-5xl font-bold">Inventory Dashboard</h1>
-          <p className="mt-2 text-zinc-400">
-            Monitor inventory health, purchases, sales, and stock movement
-            trends.
-          </p>
+          <div className="eyebrow">YOUR BUSINESS AT A GLANCE</div>
+          <h1>
+            Overview<span className="heading-dot">.</span>
+          </h1>
+          <p>A little clarity for your everyday operations.</p>
         </div>
-
-        <div className="flex gap-2">
-          <Link
-            href="/products/add"
-            className="rounded-xl bg-white px-4 py-2 text-sm font-semibold text-black transition hover:bg-zinc-200"
+        <div className="heading-actions">
+          <button
+            className="button secondary refresh-button"
+            disabled={refreshing}
+            onClick={() => {
+              clearApiCache();
+              void load();
+            }}
+            aria-label="Refresh dashboard"
           >
-            Add Product
-          </Link>
-          <Link
-            href="/purchases"
-            className="rounded-xl bg-zinc-800 px-4 py-2 text-sm font-semibold text-white transition hover:bg-zinc-700"
-          >
-            Create Purchase
-          </Link>
-          <Link
-            href="/sales"
-            className="rounded-xl bg-zinc-800 px-4 py-2 text-sm font-semibold text-white transition hover:bg-zinc-700"
-          >
-            Create Sale
+            <Icon
+              name="refresh"
+              size={17}
+              className={refreshing ? "spin" : ""}
+            />
+            <span>Refresh</span>
+          </button>
+          <Link className="button primary" href="/sales">
+            <Icon name="plus" size={17} />
+            New sale
           </Link>
         </div>
       </div>
-
-      <div className="mb-8 flex flex-wrap gap-3">
-        <button
-          onClick={() => setViewMode("overview")}
-          className={`rounded-xl px-5 py-3 font-semibold transition ${
-            viewMode === "overview"
-              ? "bg-white text-black"
-              : "bg-zinc-800 text-white hover:bg-zinc-700"
-          }`}
-        >
-          Overview Dashboard
-        </button>
-
-        <button
-          onClick={() => setViewMode("analytics")}
-          className={`rounded-xl px-5 py-3 font-semibold transition ${
-            viewMode === "analytics"
-              ? "bg-white text-black"
-              : "bg-zinc-800 text-white hover:bg-zinc-700"
-          }`}
-        >
-          Analytics Dashboard
-        </button>
+      {error && (
+        <div role="alert" className="inline-error">
+          {error} Showing the last loaded data.
+        </div>
+      )}
+      <div className="metric-grid">
+        <Metric
+          label="Inventory value"
+          value={money(s.totalInventoryValue)}
+          caption={`${s.totalStockUnits.toLocaleString()} units on hand`}
+          icon="box"
+          href="/products"
+        />
+        <Metric
+          label="Total sales"
+          value={money(s.totalSalesAmount)}
+          caption={`${data.sales.length} recorded orders · All time`}
+          icon="trend"
+          href="/sales/history"
+        />
+        <Metric
+          label="Recorded profit"
+          value={money(s.totalProfit)}
+          caption="Sales less captured product cost"
+          icon="wallet"
+          href="/sales/history"
+        />
+        <Metric
+          label="Needs attention"
+          value={String(s.lowStockCount)}
+          caption={`${out} out of stock · ${low.length - out} running low`}
+          icon="alert"
+          href="/products?stock=low"
+          tone="amber"
+        />
       </div>
-
-      {viewMode === "overview" ? (
-        <>
-          <div className="mb-8 rounded-3xl border border-red-900 bg-red-950/60 p-6 shadow-lg">
-            <div className="mb-4 flex items-center justify-between gap-4">
+      <div className="dashboard-primary">
+        <section className="panel performance-panel">
+          <div className="panel-heading">
+            <div>
+              <h2>Sales & purchasing</h2>
+              <p>Follow the flow of your business.</p>
+            </div>
+            <select
+              className="compact-select"
+              aria-label="Chart period"
+              value={days}
+              onChange={(e) => setDays(Number(e.target.value))}
+            >
+              <option value={7}>Last 7 days</option>
+              <option value={30}>Last 30 days</option>
+              <option value={90}>Last 90 days</option>
+            </select>
+          </div>
+          <div className="chart-toolbar">
+            <div className="chart-totals">
               <div>
-                <h2 className="text-3xl font-bold text-red-200">
-                  Low Stock Alert
-                </h2>
-                <p className="mt-1 text-sm text-red-300">
-                  Products at or below their minimum stock level need attention.
-                </p>
+                <span>
+                  <i className="legend-dot green" />
+                  Sales
+                </span>
+                <strong>{money(totalChartSales)}</strong>
               </div>
-
-              <div className="rounded-full bg-red-600 px-4 py-2 text-sm font-bold text-white">
-                {lowStockProducts.length} Item
-                {lowStockProducts.length === 1 ? "" : "s"}
+              <div>
+                <span>
+                  <i className="legend-dot sand" />
+                  Purchases
+                </span>
+                <strong>{money(totalChartPurchases)}</strong>
               </div>
             </div>
-
-            {lowStockProducts.length === 0 ? (
-              <div className="rounded-2xl border border-green-800 bg-green-950/40 p-5 text-green-200">
-                No low stock items right now.
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
-                {lowStockProducts.slice(0, 6).map((product) => {
-                  const shortage = Math.max(
-                    product.minStockLevel - product.currentStock,
-                    0,
-                  );
-
-                  return (
-                    <Link
-                      key={product.id}
-                      href="/products"
-                      className="rounded-xl border border-red-800 bg-black/30 p-4 transition hover:bg-black/40"
-                    >
-                      <div className="mb-3 flex items-start justify-between gap-3">
-                        <div>
-                          <h3 className="text-xl font-semibold text-white">
-                            {product.name}
-                          </h3>
-                          <p className="text-sm text-zinc-400">
-                            SKU: {product.sku}
-                          </p>
-                        </div>
-
-                        <span className="rounded-full bg-red-600 px-3 py-1 text-xs font-bold text-white">
-                          Urgent
+            <select
+              className="compact-select product-select"
+              aria-label="Chart product"
+              value={productFilter}
+              onChange={(e) => setProductFilter(e.target.value)}
+            >
+              <option value="">All products</option>
+              {products.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name}
+                </option>
+              ))}
+            </select>
+          </div>
+          <RevenueChart data={chart} />
+          <div className="panel-footnote">
+            <Icon name="clock" size={13} />
+            Daily totals for the selected period
+            {isDemoMode() ? " · Sample transactions" : ""}
+          </div>
+        </section>
+        <section className="panel health-panel">
+          <div className="panel-heading">
+            <div>
+              <h2>Inventory health</h2>
+              <p>A pulse on your shelves.</p>
+            </div>
+            <Icon name="activity" size={19} />
+          </div>
+          <div
+            className="health-ring"
+            style={{
+              background: `conic-gradient(#368a70 0 ${products.length ? (healthy / products.length) * 100 : 0}%, #d9b66c 0 ${products.length ? ((products.length - out) / products.length) * 100 : 0}%, #d98874 0 100%)`,
+            }}
+          >
+            <div>
+              <strong>{products.length}</strong>
+              <span>total products</span>
+            </div>
+          </div>
+          <div className="health-legend">
+            <Link href="/products">
+              <span>
+                <i style={{ background: "#368a70" }} />
+                Healthy stock
+              </span>
+              <strong>{healthy}</strong>
+            </Link>
+            <Link href="/products?stock=low">
+              <span>
+                <i style={{ background: "#d9b66c" }} />
+                Running low
+              </span>
+              <strong>{low.length - out}</strong>
+            </Link>
+            <Link href="/products?stock=low">
+              <span>
+                <i style={{ background: "#d98874" }} />
+                Out of stock
+              </span>
+              <strong>{out}</strong>
+            </Link>
+          </div>
+          <Link href="/products" className="panel-link">
+            View inventory
+            <Icon name="arrow" size={16} />
+          </Link>
+        </section>
+      </div>
+      <div className="dashboard-secondary">
+        <section className="panel low-stock-panel">
+          <div className="panel-heading">
+            <div className="heading-inline">
+              <h2>Time to restock</h2>
+              <span className="count-badge">{low.length}</span>
+            </div>
+            <Link href="/purchases" className="text-link">
+              New purchase
+              <Icon name="arrow" size={15} />
+            </Link>
+          </div>
+          <div className="table-scroll">
+            <table className="overview-table">
+              <thead>
+                <tr>
+                  <th>Product</th>
+                  <th>Available</th>
+                  <th>Status</th>
+                  <th>
+                    <span className="sr-only">Action</span>
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {low.slice(0, 5).map((p) => (
+                  <tr key={p.id}>
+                    <td>
+                      <div className="table-product">
+                        <span className="product-symbol">
+                          <Icon name="box" size={18} />
+                        </span>
+                        <span>
+                          <strong>{p.name}</strong>
+                          <small>{p.sku}</small>
                         </span>
                       </div>
-
-                      <div className="grid grid-cols-3 gap-3 text-sm">
-                        <div className="rounded-xl bg-zinc-900 p-3">
-                          <p className="text-zinc-400">Current</p>
-                          <p className="mt-1 text-lg font-bold text-red-300">
-                            {product.currentStock}
-                          </p>
-                        </div>
-
-                        <div className="rounded-xl bg-zinc-900 p-3">
-                          <p className="text-zinc-400">Minimum</p>
-                          <p className="mt-1 text-lg font-bold text-white">
-                            {product.minStockLevel}
-                          </p>
-                        </div>
-
-                        <div className="rounded-xl bg-zinc-900 p-3">
-                          <p className="text-zinc-400">Short by</p>
-                          <p className="mt-1 text-lg font-bold text-yellow-300">
-                            {shortage}
-                          </p>
-                        </div>
-                      </div>
-                    </Link>
-                  );
-                })}
+                    </td>
+                    <td>
+                      <strong>{p.currentStock}</strong>
+                      <small> / min {p.minStockLevel}</small>
+                    </td>
+                    <td>
+                      <span
+                        className={`status-tag ${p.currentStock === 0 ? "red" : "amber"}`}
+                      >
+                        {p.currentStock === 0 ? "Out of stock" : "Low stock"}
+                      </span>
+                    </td>
+                    <td>
+                      <Link
+                        className="icon-button"
+                        href={`/products?q=${encodeURIComponent(p.sku)}`}
+                        aria-label={`View ${p.name}`}
+                      >
+                        <Icon name="arrow" size={16} />
+                      </Link>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            {!low.length && (
+              <div className="empty-message">
+                <Icon name="check" />
+                <p>All stocked up. Your inventory is in a good place.</p>
               </div>
             )}
           </div>
-
-          <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {metricCards.map((card) => (
-              <MetricCard
-                key={card.label}
-                label={card.label}
-                value={card.value}
-                href={card.href}
-              />
+          <Link href="/products?stock=low" className="panel-link">
+            View all stock alerts
+            <Icon name="arrow" size={16} />
+          </Link>
+        </section>
+        <section className="panel activity-panel">
+          <div className="panel-heading">
+            <h2>Recent activity</h2>
+            <Link className="text-link" href="/stock-movements">
+              View all
+              <Icon name="arrow" size={14} />
+            </Link>
+          </div>
+          <div className="activity-list">
+            {data.movements.map((m) => (
+              <div className="activity-item" key={m.id}>
+                <span
+                  className={`activity-icon ${m.movementType === "IN" ? "green" : "sand"}`}
+                >
+                  <Icon
+                    name={m.movementType === "IN" ? "in" : "out"}
+                    size={16}
+                  />
+                </span>
+                <div>
+                  <strong>
+                    {m.movementType === "IN"
+                      ? "Stock received"
+                      : "Order fulfilled"}
+                  </strong>
+                  <p>
+                    {m.product?.name || "Product"} <b>· {m.quantity} units</b>
+                  </p>
+                  <small>
+                    {new Date(m.createdAt).toLocaleDateString("en-US", {
+                      month: "short",
+                      day: "numeric",
+                    })}{" "}
+                    · {m.referenceType} #{m.referenceId}
+                  </small>
+                </div>
+              </div>
             ))}
+            {!data.movements.length && (
+              <p className="empty-message">
+                Your next purchase or sale will appear here.
+              </p>
+            )}
           </div>
-
-          <div className="mb-8 grid grid-cols-1 gap-6 xl:grid-cols-2">
-            <div className="rounded-3xl bg-white p-6 text-black shadow-lg">
-              <div className="mb-5 flex items-center justify-between gap-3">
-                <h2 className="text-3xl font-bold">Recent Purchases</h2>
-                <Link
-                  href="/purchases/history"
-                  className="rounded-lg bg-black px-4 py-2 text-sm font-semibold text-white hover:bg-zinc-800"
-                >
-                  View All
-                </Link>
-              </div>
-
-              {recentPurchases.length === 0 ? (
-                <p className="text-slate-500">No purchases found.</p>
-              ) : (
-                <div className="space-y-4">
-                  {recentPurchases.map((purchase) => (
-                    <Link
-                      key={purchase.id}
-                      href="/purchases/history"
-                      className="block rounded-2xl border p-5 transition hover:bg-slate-50"
-                    >
-                      <p className="text-2xl font-semibold">
-                        Purchase #{purchase.id} —{" "}
-                        {purchase.supplier?.name || "Unknown Supplier"}
-                      </p>
-                      <p className="mt-1 text-lg text-slate-600">
-                        {formatCurrency(purchase.totalAmount)} •{" "}
-                        {formatDateTime(purchase.purchaseDate)}
-                      </p>
-                    </Link>
-                  ))}
+        </section>
+      </div>
+      <div className="dashboard-bottom">
+        <section className="panel category-panel">
+          <div className="panel-heading">
+            <h2>On the shelves</h2>
+            <span className="muted">Units by category</span>
+          </div>
+          <div className="category-bars">
+            {categories.map(([name, units], i) => (
+              <div key={name}>
+                <span>
+                  {name}
+                  <strong>{units.toLocaleString()}</strong>
+                </span>
+                <div className="bar-track">
+                  <i
+                    style={{
+                      width: `${s.totalStockUnits ? (units / s.totalStockUnits) * 100 : 0}%`,
+                      background: [
+                        "#2d7b65",
+                        "#62937e",
+                        "#91ad8d",
+                        "#b7c5a2",
+                        "#d0bd92",
+                        "#bda17b",
+                      ][i % 6],
+                    }}
+                  />
                 </div>
-              )}
-            </div>
-
-            <div className="rounded-3xl bg-white p-6 text-black shadow-lg">
-              <div className="mb-5 flex items-center justify-between gap-3">
-                <h2 className="text-3xl font-bold">Recent Sales</h2>
-                <Link
-                  href="/sales/history"
-                  className="rounded-lg bg-black px-4 py-2 text-sm font-semibold text-white hover:bg-zinc-800"
-                >
-                  View All
-                </Link>
               </div>
-
-              {recentSales.length === 0 ? (
-                <p className="text-slate-500">No sales found.</p>
-              ) : (
-                <div className="space-y-4">
-                  {recentSales.map((sale) => (
-                    <Link
-                      key={sale.id}
-                      href="/sales/history"
-                      className="block rounded-2xl border p-5 transition hover:bg-slate-50"
-                    >
-                      <p className="text-2xl font-semibold">
-                        Sale #{sale.id} —{" "}
-                        {sale.customerName || "Walk-in Customer"}
-                      </p>
-                      <p className="mt-1 text-lg text-slate-600">
-                        {formatCurrency(sale.totalAmount)} •{" "}
-                        {formatDateTime(sale.saleDate)}
-                      </p>
-                    </Link>
-                  ))}
-                </div>
-              )}
-            </div>
+            ))}
+            {!categories.length && (
+              <p className="muted">
+                Add products to see your category breakdown.
+              </p>
+            )}
           </div>
-
-          <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
-            <div className="rounded-3xl bg-white p-6 text-black shadow-lg">
-              <div className="mb-5 flex items-center justify-between gap-3">
-                <h2 className="text-3xl font-bold">Low Stock Items</h2>
-                <Link
-                  href="/products"
-                  className="rounded-lg bg-black px-4 py-2 text-sm font-semibold text-white hover:bg-zinc-800"
-                >
-                  Open Products
-                </Link>
-              </div>
-
-              {lowStockProducts.length === 0 ? (
-                <p className="text-slate-500">No low stock items.</p>
-              ) : (
-                <div className="space-y-4">
-                  {lowStockProducts.map((product) => (
-                    <Link
-                      key={product.id}
-                      href="/products"
-                      className="block rounded-2xl border p-5 transition hover:bg-slate-50"
-                    >
-                      <div className="flex items-start justify-between gap-3">
-                        <div>
-                          <p className="text-2xl font-semibold">
-                            {product.name}
-                          </p>
-                          <p className="mt-1 text-slate-600">
-                            SKU: {product.sku}
-                          </p>
-                        </div>
-
-                        <span className="rounded-full bg-red-100 px-3 py-1 text-sm font-semibold text-red-700">
-                          Low
-                        </span>
-                      </div>
-
-                      <p className="mt-3 text-lg text-slate-600">
-                        Current Stock:{" "}
-                        <span className="font-semibold">
-                          {product.currentStock}
-                        </span>{" "}
-                        • Minimum Required:{" "}
-                        <span className="font-semibold">
-                          {product.minStockLevel}
-                        </span>
-                      </p>
-                    </Link>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            <div className="rounded-3xl bg-white p-6 text-black shadow-lg">
-              <div className="mb-5 flex items-center justify-between gap-3">
-                <h2 className="text-3xl font-bold">Recent Stock Movements</h2>
-                <Link
-                  href="/stock-movements"
-                  className="rounded-lg bg-black px-4 py-2 text-sm font-semibold text-white hover:bg-zinc-800"
-                >
-                  View All
-                </Link>
-              </div>
-
-              {recentMovements.length === 0 ? (
-                <p className="text-slate-500">No stock movements found.</p>
-              ) : (
-                <div className="space-y-4">
-                  {recentMovements.map((movement) => (
-                    <Link
-                      key={movement.id}
-                      href="/stock-movements"
-                      className="block rounded-2xl border p-5 transition hover:bg-slate-50"
-                    >
-                      <div className="mb-2 flex items-start justify-between gap-3">
-                        <div>
-                          <p className="text-2xl font-semibold">
-                            {movement.product?.name || "Unknown Product"}
-                          </p>
-                          <p className="text-slate-600">
-                            {movement.referenceType || "MANUAL"}
-                            {movement.referenceId
-                              ? ` #${movement.referenceId}`
-                              : ""}
-                          </p>
-                        </div>
-
-                        <span
-                          className={`rounded-full px-3 py-1 text-sm font-semibold ${
-                            movement.movementType === "IN"
-                              ? "bg-green-100 text-green-700"
-                              : "bg-red-100 text-red-700"
-                          }`}
-                        >
-                          {movement.movementType} {toNumber(movement.quantity)}
-                        </span>
-                      </div>
-
-                      <p className="text-lg text-slate-600">
-                        {formatDateTime(movement.createdAt)}
-                      </p>
-                    </Link>
-                  ))}
-                </div>
-              )}
-            </div>
+        </section>
+        <section className="quick-panel">
+          <span className="quick-decoration" aria-hidden="true">
+            <Icon name="box" size={110} />
+          </span>
+          <p className="eyebrow">KEEP THINGS MOVING</p>
+          <h2>
+            Your next move,
+            <br />
+            one click away.
+          </h2>
+          <div className="quick-actions">
+            <Link href="/products/add">
+              <Icon name="plus" size={17} />
+              Add product
+              <Icon name="arrow" size={15} />
+            </Link>
+            <Link href="/purchases">
+              <Icon name="in" size={17} />
+              Receive stock
+              <Icon name="arrow" size={15} />
+            </Link>
+            <Link href="/sales">
+              <Icon name="out" size={17} />
+              Record a sale
+              <Icon name="arrow" size={15} />
+            </Link>
           </div>
-        </>
-      ) : (
-        <>
-          <div className="mb-6 rounded-3xl bg-white p-6 text-black shadow-lg">
-            <h2 className="mb-4 text-3xl font-bold">Analytics Filters</h2>
-
-            <div className="max-w-md">
-              <label className="mb-2 block font-medium">
-                Filter by Product
-              </label>
-              <select
-                value={selectedProductId}
-                onChange={(e) => setSelectedProductId(e.target.value)}
-                className="w-full rounded-xl border p-3"
-              >
-                <option value="">All Products</option>
-                {analyticsProducts.map((product) => (
-                  <option key={product.id} value={product.id}>
-                    {product.name || "Unnamed Product"} ({product.sku || "-"})
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          <div className="mb-6 grid grid-cols-1 gap-6 xl:grid-cols-2">
-            <div className="rounded-3xl border border-red-900 bg-red-950/60 p-6 shadow-lg">
-              <h2 className="mb-5 text-3xl font-bold text-red-100">
-                Sales vs Purchases
-              </h2>
-
-              <div className="h-96 rounded-2xl bg-white p-4 text-black">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={normalizedAnalyticsData}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="label" />
-                    <YAxis />
-                    <Tooltip
-                      formatter={(value: unknown) => formatCurrency(value)}
-                    />
-                    <Legend />
-                    <Bar dataKey="purchases" fill="#22c55e" name="Purchases" />
-                    <Bar dataKey="sales" fill="#3b82f6" name="Sales" />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
-
-            <div className="rounded-3xl bg-white p-6 text-black shadow-lg">
-              <h2 className="mb-5 text-3xl font-bold">Profit Trend</h2>
-
-              <div className="h-96 rounded-2xl border p-4">
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={normalizedAnalyticsData}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="label" />
-                    <YAxis />
-                    <Tooltip
-                      formatter={(value: unknown) => formatCurrency(value)}
-                    />
-                    <Legend />
-                    <Line
-                      type="monotone"
-                      dataKey="profit"
-                      stroke="#16a34a"
-                      strokeWidth={3}
-                      name="Profit"
-                    />
-                  </LineChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
-            <div className="rounded-3xl bg-white p-6 text-black shadow-lg">
-              <h2 className="mb-5 text-3xl font-bold">Low Stock Analysis</h2>
-
-              <div className="h-96 rounded-2xl border p-4">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={lowStockChartData}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="name" />
-                    <YAxis />
-                    <Tooltip />
-                    <Legend />
-                    <Bar
-                      dataKey="currentStock"
-                      fill="#ef4444"
-                      name="Current Stock"
-                    />
-                    <Bar
-                      dataKey="minStockLevel"
-                      fill="#f59e0b"
-                      name="Min Stock"
-                    />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
-
-            <div className="rounded-3xl bg-white p-6 text-black shadow-lg">
-              <h2 className="mb-5 text-3xl font-bold">Analytics Summary</h2>
-
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <MetricCard
-                  label="Chart Records"
-                  value={normalizedAnalyticsData.length}
-                />
-                <MetricCard
-                  label="Products in Low Stock"
-                  value={lowStockProducts.length}
-                />
-                <MetricCard
-                  label="Total Purchases"
-                  value={formatCurrency(safeSummary.totalPurchases)}
-                />
-                <MetricCard
-                  label="Total Sales"
-                  value={formatCurrency(safeSummary.totalSales)}
-                />
-              </div>
-            </div>
-          </div>
-        </>
-      )}
+        </section>
+      </div>
     </div>
   );
 }

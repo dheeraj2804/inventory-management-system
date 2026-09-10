@@ -3,6 +3,7 @@
 import toast from "react-hot-toast";
 import { useEffect, useState } from "react";
 import api from "@/src/lib/api";
+import { errorMessage } from "@/src/lib/errors";
 
 type Category = {
   id: number;
@@ -40,27 +41,27 @@ export default function CategoriesPage() {
     fetchCategories();
   }, []);
 
-const handleCreate = async (e: React.FormEvent) => {
-  e.preventDefault();
-  setLoading(true);
+  const handleCreate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
 
-  try {
-    await api.post("/categories", {
-      name,
-      description,
-    });
+    try {
+      await api.post("/categories", {
+        name,
+        description,
+      });
 
-    setName("");
-    setDescription("");
-    toast.success("Category created successfully");
-    fetchCategories();
-  } catch (error) {
-    console.error("Error creating category:", error);
-    toast.error("Failed to create category.");
-  } finally {
-    setLoading(false);
-  }
-};
+      setName("");
+      setDescription("");
+      toast.success("Category created successfully");
+      fetchCategories();
+    } catch (error) {
+      console.error("Error creating category:", error);
+      toast.error("Failed to create category.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const openEditModal = (category: Category) => {
     setEditFormData({
@@ -77,7 +78,7 @@ const handleCreate = async (e: React.FormEvent) => {
   };
 
   const handleEditChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
   ) => {
     if (!editFormData) return;
 
@@ -87,73 +88,71 @@ const handleCreate = async (e: React.FormEvent) => {
     });
   };
 
- const handleUpdateCategory = async (e: React.FormEvent) => {
-  e.preventDefault();
-  if (!editFormData) return;
+  const handleUpdateCategory = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editFormData) return;
 
-  try {
-    setEditLoading(true);
+    try {
+      setEditLoading(true);
 
-    await api.put(`/categories/${editFormData.id}`, {
-      name: editFormData.name,
-      description: editFormData.description || null,
-    });
+      await api.put(`/categories/${editFormData.id}`, {
+        name: editFormData.name,
+        description: editFormData.description || null,
+      });
 
-    toast.success("Category updated successfully");
-    closeEditModal();
-    fetchCategories();
-  } catch (error) {
-    console.error("Error updating category:", error);
-    toast.error("Failed to update category.");
-  } finally {
-    setEditLoading(false);
-  }
-};
+      toast.success("Category updated successfully");
+      closeEditModal();
+      fetchCategories();
+    } catch (error) {
+      console.error("Error updating category:", error);
+      toast.error("Failed to update category.");
+    } finally {
+      setEditLoading(false);
+    }
+  };
 
-const handleDeleteCategory = async (id: number, categoryName: string) => {
-  const confirmed = window.confirm(
-    `Are you sure you want to delete "${categoryName}"?`
-  );
-
-  if (!confirmed) return;
-
-  try {
-    const res = await api.delete(`/categories/${id}`);
-    toast.success(
-      res.data.message || `Category "${categoryName}" deleted successfully.`
+  const handleDeleteCategory = async (id: number, categoryName: string) => {
+    const confirmed = window.confirm(
+      `Are you sure you want to delete "${categoryName}"?`,
     );
-    fetchCategories();
-  } catch (error: any) {
-    const backendMessage =
-      error?.response?.data?.message ||
-      error?.response?.data?.error?.cause?.originalMessage ||
-      error?.response?.data?.error?.message ||
-      "";
 
-    if (
-      backendMessage.includes("linked to one or more products") ||
-      backendMessage.includes("violates RESTRICT setting of foreign key constraint") ||
-      backendMessage.includes("is referenced from table") ||
-      backendMessage.includes("Product_categoryId_fkey") ||
-      backendMessage.includes("Product")
-    ) {
-      toast.error(
-        `Cannot delete "${categoryName}" because it is already linked to one or more products.`
+    if (!confirmed) return;
+
+    try {
+      const res = await api.delete(`/categories/${id}`);
+      toast.success(
+        res.data.message || `Category "${categoryName}" deleted successfully.`,
       );
-      return;
-    }
+      fetchCategories();
+    } catch (error: unknown) {
+      const backendMessage = errorMessage(error, "");
 
-    if (backendMessage.includes("Category not found")) {
-      toast.error(`Category "${categoryName}" was not found.`);
-      return;
-    }
+      if (
+        backendMessage.includes("linked to one or more products") ||
+        backendMessage.includes(
+          "violates RESTRICT setting of foreign key constraint",
+        ) ||
+        backendMessage.includes("is referenced from table") ||
+        backendMessage.includes("Product_categoryId_fkey") ||
+        backendMessage.includes("Product")
+      ) {
+        toast.error(
+          `Cannot delete "${categoryName}" because it is already linked to one or more products.`,
+        );
+        return;
+      }
 
-    toast.error(`Failed to delete "${categoryName}". Please try again.`);
-  }
-};
+      if (backendMessage.includes("Category not found")) {
+        toast.error(`Category "${categoryName}" was not found.`);
+        return;
+      }
+
+      toast.error(`Failed to delete "${categoryName}". Please try again.`);
+    }
+  };
 
   return (
-    <div className="min-h-screen bg-black p-8 text-white">
+    <div className="legacy-page min-h-screen p-8">
       <h1 className="mb-6 text-4xl font-bold">Categories</h1>
 
       <div className="mb-8 max-w-3xl rounded-2xl bg-white p-6 text-black shadow-lg">
@@ -161,8 +160,14 @@ const handleDeleteCategory = async (id: number, categoryName: string) => {
 
         <form onSubmit={handleCreate} className="space-y-4">
           <div>
-            <label className="mb-2 block font-medium">Category Name</label>
+            <label
+              className="mb-2 block font-medium"
+              htmlFor="categories-field-1"
+            >
+              Category Name
+            </label>
             <input
+              id="categories-field-1"
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
@@ -173,8 +178,14 @@ const handleDeleteCategory = async (id: number, categoryName: string) => {
           </div>
 
           <div>
-            <label className="mb-2 block font-medium">Description</label>
+            <label
+              className="mb-2 block font-medium"
+              htmlFor="categories-field-2"
+            >
+              Description
+            </label>
             <textarea
+              id="categories-field-2"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               className="w-full rounded-lg border p-3"
@@ -261,8 +272,14 @@ const handleDeleteCategory = async (id: number, categoryName: string) => {
 
             <form onSubmit={handleUpdateCategory} className="space-y-4">
               <div>
-                <label className="mb-2 block font-medium">Category Name</label>
+                <label
+                  className="mb-2 block font-medium"
+                  htmlFor="categories-field-3"
+                >
+                  Category Name
+                </label>
                 <input
+                  id="categories-field-3"
                   type="text"
                   name="name"
                   value={editFormData.name}
@@ -273,8 +290,14 @@ const handleDeleteCategory = async (id: number, categoryName: string) => {
               </div>
 
               <div>
-                <label className="mb-2 block font-medium">Description</label>
+                <label
+                  className="mb-2 block font-medium"
+                  htmlFor="categories-field-4"
+                >
+                  Description
+                </label>
                 <textarea
+                  id="categories-field-4"
                   name="description"
                   value={editFormData.description}
                   onChange={handleEditChange}

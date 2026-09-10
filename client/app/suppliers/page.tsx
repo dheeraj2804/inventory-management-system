@@ -3,6 +3,7 @@
 import toast from "react-hot-toast";
 import { useEffect, useState } from "react";
 import api from "@/src/lib/api";
+import { errorMessage } from "@/src/lib/errors";
 
 type Supplier = {
   id: number;
@@ -46,28 +47,28 @@ export default function SuppliersPage() {
   }, []);
 
   const createSupplier = async (e: React.FormEvent) => {
-  e.preventDefault();
+    e.preventDefault();
 
-  try {
-    await api.post("/suppliers", {
-      name,
-      email,
-      phone,
-      address,
-    });
+    try {
+      await api.post("/suppliers", {
+        name,
+        email,
+        phone,
+        address,
+      });
 
-    setName("");
-    setEmail("");
-    setPhone("");
-    setAddress("");
+      setName("");
+      setEmail("");
+      setPhone("");
+      setAddress("");
 
-    toast.success("Supplier created successfully");
-    fetchSuppliers();
-  } catch (error) {
-    console.error("Error creating supplier:", error);
-    toast.error("Failed to create supplier.");
-  }
-};
+      toast.success("Supplier created successfully");
+      fetchSuppliers();
+    } catch (error) {
+      console.error("Error creating supplier:", error);
+      toast.error("Failed to create supplier.");
+    }
+  };
 
   const openEditModal = (supplier: Supplier) => {
     setEditFormData({
@@ -86,7 +87,7 @@ export default function SuppliersPage() {
   };
 
   const handleEditChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
   ) => {
     if (!editFormData) return;
 
@@ -97,76 +98,74 @@ export default function SuppliersPage() {
   };
 
   const handleUpdateSupplier = async (e: React.FormEvent) => {
-  e.preventDefault();
-  if (!editFormData) return;
+    e.preventDefault();
+    if (!editFormData) return;
 
-  try {
-    setEditLoading(true);
+    try {
+      setEditLoading(true);
 
-    await api.put(`/suppliers/${editFormData.id}`, {
-      name: editFormData.name,
-      email: editFormData.email || null,
-      phone: editFormData.phone || null,
-      address: editFormData.address || null,
-    });
+      await api.put(`/suppliers/${editFormData.id}`, {
+        name: editFormData.name,
+        email: editFormData.email || null,
+        phone: editFormData.phone || null,
+        address: editFormData.address || null,
+      });
 
-    toast.success("Supplier updated successfully");
-    closeEditModal();
-    fetchSuppliers();
-  } catch (error) {
-    console.error("Error updating supplier:", error);
-    toast.error("Failed to update supplier.");
-  } finally {
-    setEditLoading(false);
-  }
-};
+      toast.success("Supplier updated successfully");
+      closeEditModal();
+      fetchSuppliers();
+    } catch (error) {
+      console.error("Error updating supplier:", error);
+      toast.error("Failed to update supplier.");
+    } finally {
+      setEditLoading(false);
+    }
+  };
 
- const handleDeleteSupplier = async (id: number, supplierName: string) => {
-  const confirmed = window.confirm(
-    `Are you sure you want to delete "${supplierName}"?`
-  );
-
-  if (!confirmed) return;
-
-  try {
-    const res = await api.delete(`/suppliers/${id}`);
-    toast.success(
-      res.data.message || `Supplier "${supplierName}" deleted successfully.`
+  const handleDeleteSupplier = async (id: number, supplierName: string) => {
+    const confirmed = window.confirm(
+      `Are you sure you want to delete "${supplierName}"?`,
     );
-    fetchSuppliers();
-  } catch (error: any) {
-    const backendMessage =
-      error?.response?.data?.message ||
-      error?.response?.data?.error?.cause?.originalMessage ||
-      error?.response?.data?.error?.message ||
-      "";
 
-    if (
-      backendMessage.includes("linked to products or purchases") ||
-      backendMessage.includes("violates RESTRICT setting of foreign key constraint") ||
-      backendMessage.includes("is referenced from table") ||
-      backendMessage.includes("Product_supplierId_fkey") ||
-      backendMessage.includes("Purchase_supplierId_fkey") ||
-      backendMessage.includes("Product") ||
-      backendMessage.includes("Purchase")
-    ) {
-      toast.error(
-        `Cannot delete "${supplierName}" because it is already linked to products or purchases.`
+    if (!confirmed) return;
+
+    try {
+      const res = await api.delete(`/suppliers/${id}`);
+      toast.success(
+        res.data.message || `Supplier "${supplierName}" deleted successfully.`,
       );
-      return;
-    }
+      fetchSuppliers();
+    } catch (error: unknown) {
+      const backendMessage = errorMessage(error, "");
 
-    if (backendMessage.includes("Supplier not found")) {
-      toast.error(`Supplier "${supplierName}" was not found.`);
-      return;
-    }
+      if (
+        backendMessage.includes("linked to products or purchases") ||
+        backendMessage.includes(
+          "violates RESTRICT setting of foreign key constraint",
+        ) ||
+        backendMessage.includes("is referenced from table") ||
+        backendMessage.includes("Product_supplierId_fkey") ||
+        backendMessage.includes("Purchase_supplierId_fkey") ||
+        backendMessage.includes("Product") ||
+        backendMessage.includes("Purchase")
+      ) {
+        toast.error(
+          `Cannot delete "${supplierName}" because it is already linked to products or purchases.`,
+        );
+        return;
+      }
 
-    toast.error(`Failed to delete "${supplierName}". Please try again.`);
-  }
-};
+      if (backendMessage.includes("Supplier not found")) {
+        toast.error(`Supplier "${supplierName}" was not found.`);
+        return;
+      }
+
+      toast.error(`Failed to delete "${supplierName}". Please try again.`);
+    }
+  };
 
   return (
-    <div className="min-h-screen bg-black p-8 text-white">
+    <div className="legacy-page min-h-screen p-8">
       <h1 className="mb-6 text-4xl font-bold">Suppliers</h1>
 
       <div className="mb-8 max-w-3xl rounded-2xl bg-white p-6 text-black shadow-lg">
@@ -282,8 +281,14 @@ export default function SuppliersPage() {
 
             <form onSubmit={handleUpdateSupplier} className="space-y-4">
               <div>
-                <label className="mb-2 block font-medium">Supplier Name</label>
+                <label
+                  className="mb-2 block font-medium"
+                  htmlFor="suppliers-field-1"
+                >
+                  Supplier Name
+                </label>
                 <input
+                  id="suppliers-field-1"
                   type="text"
                   name="name"
                   value={editFormData.name}
@@ -294,8 +299,14 @@ export default function SuppliersPage() {
               </div>
 
               <div>
-                <label className="mb-2 block font-medium">Email</label>
+                <label
+                  className="mb-2 block font-medium"
+                  htmlFor="suppliers-field-2"
+                >
+                  Email
+                </label>
                 <input
+                  id="suppliers-field-2"
                   type="text"
                   name="email"
                   value={editFormData.email}
@@ -305,8 +316,14 @@ export default function SuppliersPage() {
               </div>
 
               <div>
-                <label className="mb-2 block font-medium">Phone</label>
+                <label
+                  className="mb-2 block font-medium"
+                  htmlFor="suppliers-field-3"
+                >
+                  Phone
+                </label>
                 <input
+                  id="suppliers-field-3"
                   type="text"
                   name="phone"
                   value={editFormData.phone}
@@ -316,8 +333,14 @@ export default function SuppliersPage() {
               </div>
 
               <div>
-                <label className="mb-2 block font-medium">Address</label>
+                <label
+                  className="mb-2 block font-medium"
+                  htmlFor="suppliers-field-4"
+                >
+                  Address
+                </label>
                 <textarea
+                  id="suppliers-field-4"
                   name="address"
                   value={editFormData.address}
                   onChange={handleEditChange}

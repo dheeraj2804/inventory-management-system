@@ -4,8 +4,13 @@ A full-stack inventory management application developed by **Dheeraj Reddy Arjul
 
 The project uses a Next.js frontend and an Express API backed by PostgreSQL and Prisma. This README describes the implementation currently in the repository, including the work still needed before a production rollout.
 
+![Gades inventory dashboard showing sample sales, stock health, and recent activity](docs/overview.png)
+
+*Dashboard preview with fictional demo data.*
+
 ## Contents
 
+- [Try the demo](#try-the-demo)
 - [Features](#features)
 - [Technology stack](#technology-stack)
 - [Architecture and project structure](#architecture-and-project-structure)
@@ -20,6 +25,33 @@ The project uses a Next.js frontend and an Express API backed by PostgreSQL and 
 - [Current limitations and improvement priorities](#current-limitations-and-improvement-priorities)
 - [Contributing](#contributing)
 - [Author and licensing](#author-and-licensing)
+
+## Try the demo
+
+Run the frontend and choose **Explore the demo** on the login page. No database, API server, or account is required for demo mode:
+
+```bash
+cd client
+npm ci
+npm run dev
+```
+
+Open [localhost:3000/login](http://localhost:3000/login). The sample workspace includes 24 industrial-supply products, six categories, four suppliers, 34 purchases, 34 sales, and matching stock movements. Four products need attention, including one out of stock. Transaction dates are generated relative to the first demo visit.
+
+Demo mode supports product/category/supplier management, purchases, sales, history, search, and CSV exports. Edits persist in this browser under `gades-demo-v1`. A visible banner identifies sample data; **Reset demo** restores it after confirmation. Log out and sign in to use the live API. Demo operations are intercepted locally and never sent to PostgreSQL. Treat the demo as a single-browser playground, not a shared database.
+
+### Workspace experience
+
+- Responsive sidebar, breadcrumbs, quick actions, and a mobile navigation drawer.
+- **Cmd/Ctrl + K** opens keyboard-accessible search for pages, product names, and SKUs.
+- Stock alerts link directly to filtered product lists.
+- Dashboard charts use actual dated transaction totals, with 7/30/90-day and product filters.
+- Inventory-health visualization, category breakdowns, recent activity, and restock links.
+- Gentle page/card transitions and a floating login illustration; reduced-motion preferences disable animation.
+- Loading skeletons, route prefetching, and hover/focus data prefetching.
+- Live GET requests share an account-scoped, 15-second in-memory cache. Concurrent reads are deduplicated; successful writes and logout invalidate it. A dashboard refresh forces fresh data. Changes made by other clients may take up to the cache lifetime to appear when a page fetches again.
+
+For representative navigation performance, use `npm run build` followed by `npm run start` inside `client/`. Development mode compiles routes on demand and does not provide the same prefetch behavior as a production build.
 
 ## Features
 
@@ -105,7 +137,7 @@ inventory-management-system/
 - A running PostgreSQL instance and credentials for a dedicated development database.
 - Two terminal windows, one for each service.
 
-No database contents, preconfigured user accounts, or secrets are included in the repository. A seed script is not currently provided.
+No live database contents, preconfigured live user accounts, or secrets are included in the repository. A PostgreSQL seed script is not provided; browser demo fixtures are available separately.
 
 ### 2. Clone the repository
 
@@ -155,7 +187,13 @@ node -e "console.log(require('node:crypto').randomBytes(48).toString('hex'))"
 
 Paste the generated value into your local `.env`. Environment files are excluded from version control.
 
-The frontend currently hardcodes `http://localhost:5001/api` in [`client/src/lib/api.ts`](client/src/lib/api.ts). No frontend environment variable is wired up for the API URL. If you change the API port or hostname, update that file as well.
+The frontend defaults to `http://localhost:5001/api`. To use a different API address, create `client/.env.local` with:
+
+```dotenv
+NEXT_PUBLIC_API_URL=http://localhost:5001/api
+```
+
+This is a public frontend setting; never put secrets in `NEXT_PUBLIC_` variables. Restart the dev server or rebuild the production frontend after changing it. The API is not needed in demo mode.
 
 ### 5. Apply migrations and generate Prisma Client
 
@@ -381,7 +419,16 @@ Successful purchase and sale creation return status `201` with a message and the
 | `npx eslint .` | Invoke ESLint directly using the checked-in configuration. |
 | `npx tsc --noEmit` | Check TypeScript without emitting files. |
 
-The existing `npm run lint` script invokes `next lint` and needs updating for the installed Next.js version. Use the direct ESLint command above in the meantime.
+`npm run lint` runs ESLint, and `npm run typecheck` runs TypeScript checks. Additional frontend checks:
+
+```bash
+npm test
+npm run format:check
+npx playwright install chromium
+npm run test:e2e
+```
+
+The unit suite checks demo inventory reconciliation, transaction validation, historical costing, deletion rules, and cache isolation/invalidation. Browser tests build the production frontend and start it on port 3100, then exercise demo CRUD, purchases/sales, persistence, CSV downloads, search, chart controls, mobile navigation, and reduced motion. The tests block API calls to verify demo isolation. A frontend GitHub Actions workflow runs these checks on pushes and pull requests. Tests do not certify the existing live backend.
 
 ### Backend — run inside `server/`
 
@@ -395,7 +442,7 @@ The existing `npm run lint` script invokes `next lint` and needs updating for th
 | `npx prisma validate` | Validate the Prisma schema and configuration. |
 | `npx tsc --noEmit` | Check backend TypeScript without emitting files. |
 
-There is no backend production build/start script, root workspace configuration, automated test script, or CI workflow in the current repository. The commands above are development guidance, not a claim that all checks currently pass.
+There is no backend production build/start script or root workspace configuration. The frontend has unit/browser tests and CI; the backend still needs its own integration and authorization suite.
 
 ## Verification
 
@@ -411,7 +458,7 @@ For a manual check using a fresh development database:
 8. Exercise product search/filtering and inspect an exported CSV.
 9. Log out and confirm the browser redirects to login when opening a protected page.
 
-Use a dedicated test database for these writes. This checklist is a starting point for future automated integration tests; it does not verify concurrent requests or server-side authorization.
+Use a dedicated test database for these writes. The automated browser suite covers the corresponding demo flow. This manual live-data checklist does not verify concurrent requests or server-side authorization.
 
 ## Troubleshooting
 
@@ -428,20 +475,20 @@ Use a dedicated test database for these writes. This checklist is a starting poi
 | Browser reports a network error | Confirm the backend is running and the URL in `client/src/lib/api.ts` matches its port. |
 | Port is already in use | Stop the conflicting local service or select another port; keep the frontend API URL in sync. |
 | Product deletion fails | Check whether the product is referenced by purchases, sales, or stock movement history. |
-| `npm run lint` fails | Use `npx eslint .` inside `client/`; the package script needs updating. |
+| First navigation is slow in development | Routes compile on demand. Use `npm run build` and `npm run start` to check production behavior. |
 | API works locally but cannot be reached from another device | It currently binds to `127.0.0.1`. Deployment requires an explicit host/network configuration change and the access-control work below. |
 
 ## Current limitations and improvement priorities
 
 This is an actively developed application. The repository does not establish production readiness or compliance certification. The following priorities come from the current implementation:
 
-1. **Backend authentication and authorization:** `server/src/middleware/auth.middleware.ts` is empty and business routes do not verify JWTs. The browser guard checks only whether a token exists. Registration accepts a caller-supplied role and defaults to `admin`. Implement server-side token verification, controlled account creation, and role enforcement before exposing business data.
+1. **Backend authentication and authorization:** `server/src/middleware/auth.middleware.ts` is empty and business routes do not verify JWTs. The browser guard checks only whether a token exists; demo mode uses a clearly separate local token. Registration accepts a caller-supplied role and defaults to `admin`. Implement server-side token verification, controlled account creation, and role enforcement before exposing business data.
 2. **Account response handling:** Registration and login return the full database user object, including the password hash. Return only approved public fields and improve session expiry handling; tokens and user data currently live in browser local storage.
 3. **Input validation and attribution:** Enforce positive integer quantities, valid prices and IDs, and consistent error responses on the backend. Derive `createdBy` from the authenticated user instead of trusting form input.
 4. **Concurrent stock updates:** Purchase and sale handlers read stock and then write a calculated value. Add concurrency-safe updates and handle duplicate product lines so simultaneous or repeated requests cannot corrupt stock or oversell.
 5. **Money and stock history:** Replace floating-point monetary storage with an appropriate decimal representation. Record explicit movements for opening stock and manual adjustments so history reconciles with product balances.
-6. **Build and verification:** Repair the lint script, resolve build/type-check findings, add transaction and authorization tests, and configure automated checks for pull requests.
-7. **Deployment configuration:** Add a configurable frontend API URL, backend production scripts, explicit allowed origins, appropriate network binding, secret management, and database backup procedures. The API currently uses unrestricted `cors()`.
+6. **Live backend verification:** Frontend builds, type checks, linting, demo transaction/cache tests, and browser tests are now configured. Add integration and authorization tests against a dedicated PostgreSQL test database.
+7. **Deployment configuration:** The frontend API URL is configurable. Add backend production scripts, explicit allowed origins, appropriate network binding, secret management, and database backup procedures. The API currently uses unrestricted `cors()`.
 8. **Scale and maintainability:** Add server-side pagination and database-side aggregation where appropriate; list and summary handlers currently retrieve collections into application memory.
 
 ## Contributing
