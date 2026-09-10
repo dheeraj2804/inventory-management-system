@@ -329,7 +329,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           duration: 3500,
         }}
       />
-      {pathname === "/login" || pathname === "/demo" ? (
+      {["/login", "/signup", "/demo"].includes(pathname) ? (
         children
       ) : (
         <Workspace>{children}</Workspace>

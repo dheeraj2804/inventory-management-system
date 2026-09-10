@@ -65,7 +65,7 @@ For representative navigation performance, use `npm run build` followed by `npm 
 | Purchases | Record purchases with multiple line items, increase stock, update product cost, and view purchase history. |
 | Sales | Record multi-item sales with an optional customer name, check available stock, decrease stock, capture cost at sale, and view sales history. |
 | Stock movements | View purchase-related stock entries and sale-related stock exits; search, filter, and export movement records to CSV. |
-| Login | Register through the API, log in through the UI, issue JWTs, store a browser session, and log out. Backend access enforcement remains unfinished; see [current limitations](#current-limitations-and-improvement-priorities). |
+| Login | Create an account at `/signup`, log in through the UI, issue JWTs, store a browser session, and log out. Backend access enforcement remains unfinished; see [current limitations](#current-limitations-and-improvement-priorities). |
 
 ## Technology stack
 
@@ -231,7 +231,9 @@ This root endpoint checks that the HTTP server responds; it does not test databa
 
 ### 7. Create a local account
 
-There is no registration page or seeded administrator. With the API running, register a development account through the API:
+With the API and frontend running, open [Create account](http://localhost:3000/signup), or choose **Create an account** on the login page. Enter your name, email, a password of at least eight characters, and matching password confirmation. After success, sign in with those credentials. No default account is seeded.
+
+You can also register through the API:
 
 ```bash
 curl -X POST http://127.0.0.1:5001/api/auth/register \
@@ -239,12 +241,11 @@ curl -X POST http://127.0.0.1:5001/api/auth/register \
   -d '{
     "name": "Local Developer",
     "email": "developer@example.com",
-    "password": "REPLACE_WITH_YOUR_LOCAL_PASSWORD",
-    "role": "admin"
+    "password": "REPLACE_WITH_YOUR_LOCAL_PASSWORD"
   }'
 ```
 
-Replace the sample password before running the command. Reusing the same email returns `User already exists`. The role is currently stored as a string; it does not enforce permissions.
+Replace the sample password before running the command. Passwords must have at least eight characters and at most 72 UTF-8 bytes. New emails are normalized, duplicate registrations return `409`, and accounts receive the `member` role regardless of any submitted role. Roles remain metadata until backend authorization is implemented. Existing accounts and their roles are unchanged. Account creation does not create a separate database or isolated inventory tenant.
 
 ### 8. Start the frontend
 
@@ -274,6 +275,7 @@ Purchase and sale forms currently accept a numeric `Created By` value and defaul
 | Page | Route |
 | --- | --- |
 | Login | `/login` |
+| Create account | `/signup` |
 | Dashboard | `/dashboard` |
 | Products | `/products` |
 | Add product | `/products/add` |
@@ -432,6 +434,8 @@ The unit suite checks demo inventory reconciliation, transaction validation, his
 
 ### Backend — run inside `server/`
 
+Run `npm test` to check registration validation, password hashing, role assignment, duplicate-email handling, login tokens, and safe responses using an in-memory user repository. No real accounts are created by these tests.
+
 | Command | Purpose |
 | --- | --- |
 | `npm run dev` | Start the API with `tsx watch`. |
@@ -442,7 +446,7 @@ The unit suite checks demo inventory reconciliation, transaction validation, his
 | `npx prisma validate` | Validate the Prisma schema and configuration. |
 | `npx tsc --noEmit` | Check backend TypeScript without emitting files. |
 
-There is no backend production build/start script or root workspace configuration. The frontend has unit/browser tests and CI; the backend still needs its own integration and authorization suite.
+There is no backend production build/start script or root workspace configuration. The frontend has unit/browser tests and CI; the backend has registration/login handler tests with an in-memory repository and still needs database integration and authorization coverage.
 
 ## Verification
 
@@ -470,7 +474,7 @@ Use a dedicated test database for these writes. The automated browser suite cove
 | Cannot connect to PostgreSQL | Check that PostgreSQL is running and that the database, credentials, host, port, and any required SSL settings match the connection string. |
 | Missing database tables | Apply committed migrations against the database configured in `DATABASE_URL`. |
 | Cannot find the generated Prisma client | Run `npx prisma generate` inside `server/`, then restart the API. |
-| Login fails on an empty database | Register an account through the API; no default account is included. |
+| Login fails on an empty database | Use `/signup` or the registration API; no default account is included. |
 | Token signing fails | Set a nonempty `JWT_SECRET` in `server/.env` and restart the API. |
 | Browser reports a network error | Confirm the backend is running and the URL in `client/src/lib/api.ts` matches its port. |
 | Port is already in use | Stop the conflicting local service or select another port; keep the frontend API URL in sync. |
@@ -482,8 +486,8 @@ Use a dedicated test database for these writes. The automated browser suite cove
 
 This is an actively developed application. The repository does not establish production readiness or compliance certification. The following priorities come from the current implementation:
 
-1. **Backend authentication and authorization:** `server/src/middleware/auth.middleware.ts` is empty and business routes do not verify JWTs. The browser guard checks only whether a token exists; demo mode uses a clearly separate local token. Registration accepts a caller-supplied role and defaults to `admin`. Implement server-side token verification, controlled account creation, and role enforcement before exposing business data.
-2. **Account response handling:** Registration and login return the full database user object, including the password hash. Return only approved public fields and improve session expiry handling; tokens and user data currently live in browser local storage.
+1. **Backend authentication and authorization:** `server/src/middleware/auth.middleware.ts` is empty and business routes do not verify JWTs. The browser guard checks only whether a token exists; demo mode uses a clearly separate local token. Registration now assigns `member` and ignores caller-supplied roles. Implement server-side token verification, controlled account creation, and role enforcement before exposing business data.
+2. **Sessions and account lifecycle:** Registration and login return only public user fields; password hashes are excluded. Session expiry handling, email verification, password reset, and login/registration rate limiting still need implementation. Tokens and public user data currently live in browser local storage.
 3. **Input validation and attribution:** Enforce positive integer quantities, valid prices and IDs, and consistent error responses on the backend. Derive `createdBy` from the authenticated user instead of trusting form input.
 4. **Concurrent stock updates:** Purchase and sale handlers read stock and then write a calculated value. Add concurrency-safe updates and handle duplicate product lines so simultaneous or repeated requests cannot corrupt stock or oversell.
 5. **Money and stock history:** Replace floating-point monetary storage with an appropriate decimal representation. Record explicit movements for opening stock and manual adjustments so history reconciles with product balances.

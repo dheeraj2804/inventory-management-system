@@ -41,6 +41,8 @@ export function resetDemo() {
 }
 
 const adapter: AxiosAdapter = async (config) => {
+  // Account creation and sign-in always use the real API, even from a demo session.
+  if (config.url?.startsWith("/auth/")) return network.adapter(config);
   if (isDemoMode()) {
     try {
       const raw = localStorage.getItem(DEMO_KEY);

@@ -1850,3 +1850,85 @@ dialog[open] {
     font-size: 10px;
   }
 }
+.account-link {
+  font-size: 12px !important;
+  text-align: center;
+  color: #6c7a61 !important;
+  margin: 20px 0 !important;
+  line-height: 1.6;
+}
+.account-link a,
+.demo-caption a {
+  color: #286e57;
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.password-label {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+}
+.password-label button {
+  font-size: 10px;
+  color: #286e57;
+  background: none;
+  border: 0;
+}
+.password-guidance {
+  font-size: 10px;
+  color: #6c7a61;
+  line-height: 1.6;
+  margin: -12px 0 18px;
+}
+.signup-error {
+  font-size: 12px;
+  color: #973f32;
+  background: #fff0e9;
+  border: 1px solid #efd3c8;
+  border-radius: 7px;
+  padding: 10px 12px;
+  margin: 0 0 16px;
+  line-height: 1.5;
+}
+.signup-benefits {
+  margin-top: 35px;
+}
+.signup-benefits p {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 13px;
+  color: #61784d;
+  margin-bottom: 18px;
+}
+.signup-benefits svg {
+  color: #3c7b58;
+}
+.signup-page .login-form-side {
+  padding-top: 35px;
+  padding-bottom: 35px;
+}
+.signup-success {
+  text-align: center;
+}
+.signup-success-icon {
+  display: grid;
+  place-items: center;
+  width: 62px;
+  height: 62px;
+  background: #e7f1df;
+  color: #347553;
+  border-radius: 50%;
+  margin: 0 auto 24px;
+}
+.signup-success > p {
+  color: #6c7a61;
+  font-size: 13px;
+  line-height: 1.7;
+  margin: 15px 0 24px;
+  overflow-wrap: anywhere;
+}
+.signup-success .primary {
+  justify-content: center;
+}

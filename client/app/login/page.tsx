@@ -1,4 +1,5 @@
 "use client";
+import Link from "next/link";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import api, { clearApiCache, startDemo } from "@/src/lib/api";
@@ -99,6 +100,9 @@ export default function LoginPage() {
               <Icon name="arrow" size={17} />
             </button>
           </form>
+          <p className="account-link">
+            New to StockSync? <Link href="/signup">Create an account</Link>
+          </p>
           <div className="login-divider">
             <span>Just looking around?</span>
           </div>
