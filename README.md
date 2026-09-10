@@ -1,10 +1,10 @@
-# Inventory Management System
+# StockSync
 
-A full-stack inventory management application developed and maintained by **Dheeraj Reddy Arjula** as a personal software project. It brings product records, suppliers, purchasing, sales, stock movements, and business summaries into one web interface.
+**StockSync** is a full-stack inventory management application developed and maintained by **Dheeraj Reddy Arjula** as a personal software project. It brings product records, suppliers, purchasing, sales, stock movements, and business summaries into one web interface.
 
 The project uses a Next.js frontend and an Express API backed by PostgreSQL and Prisma. This README describes the implementation currently in the repository, including the work still needed before a production rollout.
 
-![Personal inventory dashboard showing sample sales, stock health, and recent activity](docs/overview.png)
+![StockSync inventory dashboard showing sample sales, stock health, and recent activity](docs/overview.png)
 
 *Dashboard preview with fictional demo data.*
 

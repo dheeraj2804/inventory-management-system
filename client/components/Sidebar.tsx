@@ -16,12 +16,10 @@ export default function Sidebar({ onNavigate }: { onNavigate: () => void }) {
         <span className="brand-mark">
           <Icon name="box" size={25} />
         </span>
-        <span>
-          Inventory<span className="brand-caption">PERSONAL PROJECT</span>
-        </span>
+        <span>StockSync</span>
       </Link>
       <div className="workspace-switch">
-        <span className="workspace-dot">I</span>
+        <span className="workspace-dot">S</span>
         <div>
           <strong>Main workspace</strong>
           <small>

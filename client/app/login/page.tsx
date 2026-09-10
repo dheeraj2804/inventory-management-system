@@ -39,9 +39,7 @@ export default function LoginPage() {
           <span className="brand-mark">
             <Icon name="box" size={28} />
           </span>
-          <span>
-            Inventory<span className="brand-caption">PERSONAL PROJECT</span>
-          </span>
+          <span>StockSync</span>
         </div>
         <div className="login-story-content">
           <span className="login-label">YOUR OPERATIONS, IN SYNC</span>

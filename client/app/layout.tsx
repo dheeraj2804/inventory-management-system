@@ -3,9 +3,9 @@ import type { ReactNode } from "react";
 import AppShell from "@/components/AppShell";
 
 export const metadata = {
-  title: "Inventory Management System",
+  title: "StockSync | Inventory Management",
   description:
-    "A personal inventory management project by Dheeraj Reddy Arjula.",
+    "StockSync — a personal inventory management project by Dheeraj Reddy Arjula.",
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {

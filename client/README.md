@@ -1,4 +1,4 @@
-# Inventory Management System frontend
+# StockSync frontend
 
 See the [project README](../README.md) for architecture, live API setup, data models, and limitations.
 

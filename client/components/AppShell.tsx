@@ -190,7 +190,7 @@ function Workspace({ children }: { children: React.ReactNode }) {
         </main>
         <footer className="workspace-footer">
           <span>
-            Personal project <span>·</span> Inventory, thoughtfully organized.
+            StockSync <span>·</span> Inventory, thoughtfully organized.
           </span>
           <span>{demo ? "Sample workspace" : "Connected workspace"}</span>
         </footer>
