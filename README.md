@@ -1,6 +1,6 @@
 # Inventory Management System
 
-A full-stack inventory management application developed by **Dheeraj Reddy Arjula** for **Gades Sales Co.**, and maintained as a personal software project. It brings product records, suppliers, purchasing, sales, stock movements, and business summaries into one web interface.
+A full-stack inventory management application developed by **Dheeraj Reddy Arjula**. It brings product records, suppliers, purchasing, sales, stock movements, and business summaries into one web interface.
 
 The project uses a Next.js frontend and an Express API backed by PostgreSQL and Prisma. This README describes the implementation currently in the repository, including the work still needed before a production rollout.
 
